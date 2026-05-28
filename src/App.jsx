@@ -16,6 +16,11 @@ export default function App() {
     const state = initializeGame()
     setGameState(state)
 
+    // URL 경로 확인 - /admin으로 직접 접근 가능
+    if (window.location.pathname === '/admin') {
+      setPage('admin')
+    }
+
     // 개발 모드: Ctrl+Shift+A로 어드민 패널 열기
     const handleKeyPress = (e) => {
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyA') {
