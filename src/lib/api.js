@@ -2,20 +2,26 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-async function request(method, table, filters = {}) {
+async function request(method, table, data = null, filters = {}) {
   let url = `${SUPABASE_URL}/rest/v1/${table}?`
   Object.entries(filters).forEach(([key, value]) => {
     url += `${key}=eq.${value}&`
   })
 
-  const res = await fetch(url, {
+  const options = {
     method,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
-  })
+  }
+
+  if (data) {
+    options.body = JSON.stringify(data)
+  }
+
+  const res = await fetch(url, options)
 
   if (!res.ok) {
     const text = await res.text()
@@ -26,15 +32,182 @@ async function request(method, table, filters = {}) {
   return res.json()
 }
 
+// Chapters
 export async function getChapters() {
   return request('GET', 'chapters')
 }
 
-export async function getStoryData(chapterNum) {
-  const chapters = await request('GET', 'chapters', { chapter_num: chapterNum })
-  return chapters[0] || null
+export async function createChapter(chapter) {
+  return request('POST', 'chapters', chapter)
 }
 
-export async function savePlayerProgress(playerId, chapterNum, completed) {
-  // Will be called via Supabase Edge Function
+export async function updateChapter(id, data) {
+  let url = `${SUPABASE_URL}/rest/v1/chapters?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function deleteChapter(id) {
+  let url = `${SUPABASE_URL}/rest/v1/chapters?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return null
+}
+
+// Scenes
+export async function getScenes(chapterId) {
+  let url = `${SUPABASE_URL}/rest/v1/scenes?chapter_id=eq.${chapterId}&order=scene_order.asc`
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function createScene(scene) {
+  return request('POST', 'scenes', scene)
+}
+
+export async function updateScene(id, data) {
+  let url = `${SUPABASE_URL}/rest/v1/scenes?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function deleteScene(id) {
+  let url = `${SUPABASE_URL}/rest/v1/scenes?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return null
+}
+
+// Choices
+export async function getChoices(sceneId) {
+  let url = `${SUPABASE_URL}/rest/v1/choices?scene_id=eq.${sceneId}&order=choice_order.asc`
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function createChoice(choice) {
+  return request('POST', 'choices', choice)
+}
+
+export async function updateChoice(id, data) {
+  let url = `${SUPABASE_URL}/rest/v1/choices?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function deleteChoice(id) {
+  let url = `${SUPABASE_URL}/rest/v1/choices?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return null
+}
+
+// Storage (Images)
+export async function uploadImage(bucket, path, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: formData,
+  })
+
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`
+}
+
+export async function deleteImage(bucket, path) {
+  const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+  return null
+}
+
+export async function getStoryData(chapterNum) {
+  const chapters = await getChapters()
+  const chapter = chapters.find(ch => ch.chapter_num === chapterNum)
+  if (!chapter) return null
+
+  const scenes = await getScenes(chapter.id)
+  const scenesWithChoices = await Promise.all(
+    scenes.map(async (scene) => ({
+      ...scene,
+      choices: await getChoices(scene.id),
+    }))
+  )
+
+  return {
+    ...chapter,
+    scenes: scenesWithChoices,
+  }
 }

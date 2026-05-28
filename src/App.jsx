@@ -3,11 +3,12 @@ import TitlePage from './components/TitlePage'
 import ChapterSelect from './components/ChapterSelect'
 import StoryPage from './components/StoryPage'
 import ChapterComplete from './components/ChapterComplete'
+import AdminPanel from './components/AdminPanel'
 import { initializeGame, saveProgress } from './lib/gameState'
 import './App.css'
 
 export default function App() {
-  const [page, setPage] = useState('title') // title, select, story, complete
+  const [page, setPage] = useState('title') // title, select, story, complete, admin
   const [gameState, setGameState] = useState(null)
   const [currentChapter, setCurrentChapter] = useState(null)
   const [currentScene, setCurrentScene] = useState(0)
@@ -15,6 +16,15 @@ export default function App() {
   useEffect(() => {
     const state = initializeGame()
     setGameState(state)
+
+    // 개발 모드: Ctrl+Shift+A로 어드민 패널 열기
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyA') {
+        setPage('admin')
+      }
+    }
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
 
   const handleStartGame = (nickname) => {
@@ -87,6 +97,9 @@ export default function App() {
           onContinueNext={handleContinueToNext}
           onBackToSelect={handleBackToSelect}
         />
+      )}
+      {page === 'admin' && (
+        <AdminPanel onBack={() => setPage('title')} />
       )}
     </>
   )
