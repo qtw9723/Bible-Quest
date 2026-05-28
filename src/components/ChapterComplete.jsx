@@ -1,48 +1,118 @@
-import { CheckCircle } from 'lucide-react'
-
-const CHAPTER_VERSES = {
-  1: { ref: '마태복음 4:18-20', text: '"예수께서 갈릴리 해변을 지나가시다가 두 형제 시몬 베드로와 그 형제 안드레가 바다에 그물을 던지는 것을 보시고 이르시되 나를 따라오라 내가 너희로 사람을 낚는 어부가 되게 하리라 하시니 그들이 곧 그물을 버려두고 따라가시니라"' },
-  2: { ref: '마태복음 10:1-4', text: '"예수께서 그의 열두 제자를 부르사 그들에게 권능을 주사 더러운 귀신을 내쫓고 모든 병과 모든 약한 것을 고치게 하시니라"' },
-}
+import { motion } from 'framer-motion'
+import { Trophy, Sparkles } from 'lucide-react'
 
 export default function ChapterComplete({ chapter, onContinueNext, onBackToSelect }) {
-  const verse = CHAPTER_VERSES[chapter] || { ref: '', text: '' }
-  const hasNextChapter = chapter < 12
-
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-green-900 to-green-800 flex flex-col items-center justify-center text-white p-8">
-      <div className="text-center max-w-2xl">
-        <CheckCircle size={80} className="mx-auto mb-8 text-green-300" />
-        <h1 className="text-5xl font-bold mb-4">챕터 완료!</h1>
-        <p className="text-2xl mb-12 text-green-200">Chapter {chapter}: {['갈릴리의 부름', '제자 선택'][chapter - 1]} 완료</p>
+    <div className="size-full relative overflow-hidden bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
+      {/* 배경 이펙트 */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-yellow-400/10 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          style={{ transform: 'translate(-50%, -50%)' }}
+        />
+      </div>
 
-        {/* 성경 구절 */}
-        <div className="bg-black bg-opacity-40 p-8 rounded-lg mb-8">
-          <p className="text-sm text-yellow-300 mb-4">{verse.ref}</p>
-          <p className="text-lg leading-relaxed text-gray-200">"{verse.text}"</p>
+      {/* 메인 콘텐츠 */}
+      <div className="relative z-10 size-full flex flex-col items-center justify-center p-10">
+        {/* 트로피 아이콘 */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="mb-8"
+        >
+          <Trophy className="w-24 h-24 text-yellow-300" />
+        </motion.div>
+
+        {/* 축하 텍스트 */}
+        <motion.h1
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 mb-4 text-center"
+        >
+          축하합니다!
+        </motion.h1>
+
+        {/* 챕터 정보 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="text-center mb-12"
+        >
+          <p className="text-2xl text-white mb-2">
+            챕터 {chapter}를 완료했습니다!
+          </p>
+          <p className="text-lg text-blue-100/70">
+            신앙 여정을 계속해보세요
+          </p>
+        </motion.div>
+
+        {/* 보상 표시 (나중에 추가) */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mb-12 flex items-center gap-4"
+        >
+          <Sparkles className="w-8 h-8 text-yellow-300" />
+          <p className="text-xl text-yellow-200">경험치 +100</p>
+          <Sparkles className="w-8 h-8 text-yellow-300" />
+        </motion.div>
+
+        {/* 파티클 이펙트 */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[...Array(15)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 bg-yellow-300 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -100, -200],
+                opacity: [1, 0.5, 0],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
         </div>
 
-        {/* 버튼 */}
-        <div className="space-y-4">
-          {hasNextChapter ? (
-            <button
-              onClick={onContinueNext}
-              className="w-full px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg text-xl transition"
-            >
-              다음 챕터로
-            </button>
-          ) : (
-            <div className="p-4 bg-yellow-500 text-black font-bold rounded-lg">
-              축하합니다! 모든 챕터를 완료했습니다!
-            </div>
-          )}
+        {/* 버튼 그룹 */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="flex flex-col gap-4 w-full max-w-sm"
+        >
+          <button
+            onClick={onContinueNext}
+            className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            다음 챕터 →
+          </button>
           <button
             onClick={onBackToSelect}
-            className="w-full px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg text-xl transition"
+            className="w-full py-4 px-6 bg-white/10 backdrop-blur-sm border-2 border-white/20 hover:border-white/40 text-white font-semibold rounded-xl transition-all duration-300"
           >
             챕터 목록으로
           </button>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

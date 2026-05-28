@@ -1,62 +1,121 @@
-import { ChevronRight, Lock, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { getChapters } from '../lib/api'
 
-const CHAPTERS = [
-  { num: 1, title: '갈릴리의 부름' },
-  { num: 2, title: '제자 선택' },
-  { num: 3, title: '산 위의 설교' },
-  { num: 4, title: '폭풍 위의 승리' },
-  { num: 5, title: '귀신 들린 자의 치유' },
-  { num: 6, title: '오병이어' },
-  { num: 7, title: '물 위를 걷다' },
-  { num: 8, title: '가나안 여인' },
-  { num: 9, title: '변화산 위의 영광' },
-  { num: 10, title: '좋은 사마리아인' },
-  { num: 11, title: '나사로의 부활' },
-  { num: 12, title: '십자가와 부활' },
-]
+export default function ChapterSelect({ nickname, completedChapters = [], onSelectChapter }) {
+  const [chapters, setChapters] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-export default function ChapterSelect({ nickname, completedChapters, onSelectChapter }) {
+  useEffect(() => {
+    const loadChapters = async () => {
+      try {
+        const data = await getChapters()
+        setChapters(data || [])
+      } catch (err) {
+        console.error('Failed to load chapters:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadChapters()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="size-full flex items-center justify-center bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
+        <div className="text-white text-xl">챕터를 불러오는 중...</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-2">Bible Quest</h1>
-        <p className="text-xl text-blue-300 mb-8">{nickname}님의 여정</p>
+    <div className="size-full relative overflow-hidden bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
+      {/* 배경 이펙트 */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute top-[-50%] left-1/2 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl"
+          animate={{
+            y: [0, 30, 0],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          style={{ transform: 'translateX(-50%)' }}
+        />
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {CHAPTERS.map((ch) => {
-            const isCompleted = completedChapters.includes(ch.num)
-            const isLocked = !isCompleted && ch.num > 1
-            const isPrevCompleted = ch.num === 1 || completedChapters.includes(ch.num - 1)
-            const isPlayable = !isLocked || isPrevCompleted
+      {/* 콘텐츠 */}
+      <div className="relative z-10 size-full flex flex-col p-10 md:p-16">
+        {/* 헤더 */}
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 mb-2">
+            챕터 선택
+          </h1>
+          <p className="text-xl text-blue-100/90">
+            안녕하세요, <span className="text-amber-300 font-semibold">{nickname}</span>님
+          </p>
+        </motion.div>
 
+        {/* 챕터 그리드 */}
+        <motion.div
+          className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          {chapters.map((chapter, index) => {
+            const isCompleted = completedChapters.includes(chapter.id)
             return (
-              <button
-                key={ch.num}
-                onClick={() => isPlayable && onSelectChapter(ch.num)}
-                disabled={!isPlayable && !isCompleted}
-                className={`p-6 rounded-lg transition ${
-                  isCompleted
-                    ? 'bg-green-700 hover:bg-green-600'
-                    : isPlayable
-                    ? 'bg-blue-700 hover:bg-blue-600'
-                    : 'bg-gray-700 cursor-not-allowed opacity-50'
-                }`}
+              <motion.button
+                key={chapter.id}
+                onClick={() => onSelectChapter(chapter.chapter_num)}
+                className="relative group"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+                whileHover={{ scale: 1.05 }}
               >
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <p className="text-sm text-gray-300">Chapter {ch.num}</p>
-                    <p className="text-lg font-semibold">{ch.title}</p>
+                <div className="bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-2xl p-6 h-full hover:border-amber-400/50 hover:bg-amber-400/10 transition-all duration-300">
+                  {/* 완료 배지 */}
+                  {isCompleted && (
+                    <div className="absolute top-4 right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-lg">✓</span>
+                    </div>
+                  )}
+
+                  {/* 챕터 번호 */}
+                  <div className="text-5xl font-bold text-amber-300 mb-2">
+                    {chapter.chapter_num}
                   </div>
-                  <div>
-                    {isCompleted && <CheckCircle size={24} className="text-white" />}
-                    {!isPlayable && <Lock size={24} />}
-                    {isPlayable && !isCompleted && <ChevronRight size={24} />}
+
+                  {/* 제목 */}
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    {chapter.title}
+                  </h3>
+
+                  {/* 설명 */}
+                  <p className="text-white/70 text-sm mb-4">
+                    {chapter.description || '신약 성경 스토리'}
+                  </p>
+
+                  {/* 상태 표시 */}
+                  <div className="text-sm text-white/50">
+                    {isCompleted ? '✓ 완료됨' : '미진행'}
                   </div>
                 </div>
-              </button>
+              </motion.button>
             )
           })}
-        </div>
+        </motion.div>
       </div>
     </div>
   )
