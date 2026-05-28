@@ -105,14 +105,14 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
   }
 
   return (
-    <div className="size-full relative overflow-hidden">
+    <div className="size-full relative overflow-hidden bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
       {/* 배경 이미지 */}
       <AnimatePresence mode="wait">
-        {imageLoaded && currentScene.background && (
+        {currentScene.background && (
           <motion.div
             key={`bg-${currentScene.id}`}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: imageLoaded ? 1 : 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             className="absolute inset-0"
@@ -140,7 +140,7 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.6 }}
-            className="absolute bottom-0 left-0 h-3/5 w-2/5 max-w-md"
+            className="absolute bottom-0 left-0 sm:h-3/5 sm:w-2/5 h-1/2 w-full sm:max-w-md sm:!w-2/5"
           >
             <img
               src={currentScene.character}
@@ -156,7 +156,7 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
       )}
 
       {/* 텍스트 및 선택지 영역 */}
-      <div className="relative z-10 size-full flex flex-col justify-end p-6 md:p-10">
+      <div className="relative z-10 size-full flex flex-col justify-end p-4 sm:p-6 md:p-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={`scene-${currentScene.id}`}
@@ -167,40 +167,40 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
             className="w-full max-w-4xl mx-auto"
           >
             {/* 텍스트 카드 */}
-            <div className="bg-black/70 backdrop-blur-md rounded-2xl p-6 md:p-8 mb-6 border border-white/10">
-              <p className="text-white text-lg md:text-xl leading-relaxed">
+            <div className="bg-black/70 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 border border-white/10">
+              <p className="text-white text-base sm:text-lg md:text-xl leading-relaxed">
                 {currentScene.text}
               </p>
             </div>
 
             {/* 선택지 버튼들 */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {currentScene.choices && currentScene.choices.map((choice, index) => (
                 <motion.button
                   key={index}
                   onClick={() => handleChoice(choice.next_scene_id)}
-                  className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white text-left hover:bg-amber-400/20 hover:border-amber-400/50 transition-all duration-300 group"
+                  className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-lg sm:rounded-xl text-white text-left hover:bg-amber-400/20 hover:border-amber-400/50 transition-all duration-300 group"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + index * 0.1 }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <span className="text-base md:text-lg group-hover:text-amber-300 transition-colors">
-                    {choice.text}
+                  <span className="text-sm sm:text-base md:text-lg group-hover:text-amber-300 transition-colors">
+                    {choice.label}
                   </span>
                 </motion.button>
               ))}
             </div>
 
             {/* 진행 상황 표시 */}
-            <div className="mt-6 text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full">
-                <span className="text-amber-300 text-sm">
+            <div className="mt-4 sm:mt-6 text-center">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-black/50 rounded-full text-xs sm:text-sm">
+                <span className="text-amber-300">
                   챕터 {chapter}
                 </span>
                 <span className="text-white/50">•</span>
-                <span className="text-white/70 text-sm">
+                <span className="text-white/70">
                   {currentSceneIndex + 1} / {scenes.length}
                 </span>
               </div>
