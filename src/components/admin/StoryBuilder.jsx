@@ -17,7 +17,25 @@ export default function StoryBuilder() {
     try {
       setLoading(true)
       const data = await getChapters()
-      setChapters(data)
+
+      // Load scenes and choices for each chapter
+      const chaptersWithScenes = await Promise.all(
+        data.map(async (chapter) => {
+          const scenes = await getScenes(chapter.id)
+          const scenesWithChoices = await Promise.all(
+            scenes.map(async (scene) => ({
+              ...scene,
+              choices: await getChoices(scene.id),
+            }))
+          )
+          return {
+            ...chapter,
+            scenes: scenesWithChoices,
+          }
+        })
+      )
+
+      setChapters(chaptersWithScenes)
     } catch (e) {
       setError(e.message)
     } finally {
