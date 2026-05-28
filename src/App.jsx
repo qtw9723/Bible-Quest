@@ -5,7 +5,6 @@ import StoryPage from './components/StoryPage'
 import ChapterComplete from './components/ChapterComplete'
 import AdminPanel from './components/AdminPanel'
 import { initializeGame, saveProgress } from './lib/gameState'
-import './App.css'
 
 export default function App() {
   const [page, setPage] = useState('title') // title, select, story, complete, admin

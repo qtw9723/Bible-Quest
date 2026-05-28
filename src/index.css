@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-/* Figma Design System Theme */
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --font-size: 16px;
   --background: #ffffff;
