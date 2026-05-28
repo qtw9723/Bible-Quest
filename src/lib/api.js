@@ -29,7 +29,11 @@ async function request(method, table, data = null, filters = {}) {
   }
 
   if (method === 'DELETE') return null
-  return res.json()
+
+  // Supabase는 POST/PATCH 요청 후 빈 응답을 반환할 수 있음
+  const text = await res.text()
+  if (!text) return null
+  return JSON.parse(text)
 }
 
 // Chapters
