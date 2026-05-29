@@ -1,7 +1,211 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit2, ChevronDown, ChevronUp } from 'lucide-react'
-import { getChapters, createChapter, updateChapter, deleteChapter, getScenes, createScene, updateScene, deleteScene, getChoices, createChoice, updateChoice, deleteChoice } from '../../lib/api'
+import { Plus, Trash2, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import {
+  getChapters, createChapter, deleteChapter,
+  getScenes, createScene, updateScene, deleteScene,
+  getChoices, createChoice, deleteChoice,
+} from '../../lib/api'
 
+/* ───────── 공용 모달 래퍼 ───────── */
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-gray-800 border border-gray-600 rounded-2xl w-full max-w-lg shadow-2xl">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+          <h2 className="text-lg font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-700 rounded-lg transition">
+            <X size={20} className="text-gray-400" />
+          </button>
+        </div>
+        {/* 본문 */}
+        <div className="px-6 py-5">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/* ───────── 확인 모달 ───────── */
+function ConfirmModal({ message, onConfirm, onClose }) {
+  return (
+    <Modal title="확인" onClose={onClose}>
+      <p className="text-gray-300 mb-6">{message}</p>
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+        >
+          취소
+        </button>
+        <button
+          onClick={() => { onConfirm(); onClose() }}
+          className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition"
+        >
+          삭제
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+/* ───────── 챕터 추가 모달 ───────── */
+function AddChapterModal({ nextNum, onSubmit, onClose }) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!title.trim()) return
+    onSubmit({ title: title.trim(), description: description.trim() })
+    onClose()
+  }
+
+  return (
+    <Modal title={`Chapter ${nextNum} 추가`} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">챕터 번호</label>
+          <input
+            value={nextNum}
+            disabled
+            className="w-full bg-gray-700 text-gray-400 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">제목 *</label>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예) 갈릴리의 부름"
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">설명 (선택)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="챕터 소개 한 줄"
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">취소</button>
+          <button type="submit" disabled={!title.trim()} className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg transition">추가</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/* ───────── 장면 추가/수정 모달 ───────── */
+function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
+  const isEdit = !!scene
+  const [text, setText] = useState(scene?.text || '')
+  const [background, setBackground] = useState(scene?.background || '')
+  const [character, setCharacter] = useState(scene?.character || '')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    onSubmit({ text: text.trim(), background: background.trim(), character: character.trim() })
+    onClose()
+  }
+
+  return (
+    <Modal title={isEdit ? '장면 수정' : `Scene ${sceneOrder} 추가`} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">장면 텍스트 *</label>
+          <textarea
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            placeholder="장면에 표시될 내레이션 또는 대사를 입력하세요"
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">배경 이미지 URL (선택)</label>
+          <input
+            value={background}
+            onChange={(e) => setBackground(e.target.value)}
+            placeholder="https://..."
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">캐릭터 이미지 URL (선택)</label>
+          <input
+            value={character}
+            onChange={(e) => setCharacter(e.target.value)}
+            placeholder="https://..."
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">취소</button>
+          <button type="submit" disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg transition">
+            {isEdit ? '저장' : '추가'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/* ───────── 선택지 추가 모달 ───────── */
+function AddChoiceModal({ allScenes, onSubmit, onClose }) {
+  const [label, setLabel] = useState('')
+  const [nextSceneId, setNextSceneId] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!label.trim()) return
+    onSubmit({ label: label.trim(), next_scene_id: nextSceneId || null })
+    onClose()
+  }
+
+  return (
+    <Modal title="선택지 추가" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">선택지 텍스트 *</label>
+          <input
+            autoFocus
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="예) 예수님을 따라간다"
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">다음 장면 (선택 — 없으면 챕터 완료)</label>
+          <select
+            value={nextSceneId}
+            onChange={(e) => setNextSceneId(e.target.value)}
+            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="">챕터 완료</option>
+            {allScenes.map((s) => (
+              <option key={s.id} value={s.id}>
+                Scene {s.scene_order}: {s.text?.substring(0, 40)}…
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">취소</button>
+          <button type="submit" disabled={!label.trim()} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-lg transition">추가</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/* ───────── 메인 StoryBuilder ───────── */
 export default function StoryBuilder() {
   const [chapters, setChapters] = useState([])
   const [expandedChapter, setExpandedChapter] = useState(null)
@@ -9,16 +213,18 @@ export default function StoryBuilder() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    loadChapters()
-  }, [])
+  // 모달 상태
+  const [modal, setModal] = useState(null)
+  // modal = { type: 'addChapter' | 'addScene' | 'editScene' | 'addChoice' | 'confirm', ...payload }
+
+  const closeModal = () => setModal(null)
+
+  useEffect(() => { loadChapters() }, [])
 
   const loadChapters = async () => {
     try {
       setLoading(true)
       const data = await getChapters()
-
-      // Load scenes and choices for each chapter
       const chaptersWithScenes = await Promise.all(
         data.map(async (chapter) => {
           const scenes = await getScenes(chapter.id)
@@ -28,13 +234,9 @@ export default function StoryBuilder() {
               choices: await getChoices(scene.id),
             }))
           )
-          return {
-            ...chapter,
-            scenes: scenesWithChoices,
-          }
+          return { ...chapter, scenes: scenesWithChoices }
         })
       )
-
       setChapters(chaptersWithScenes)
     } catch (e) {
       setError(e.message)
@@ -43,135 +245,133 @@ export default function StoryBuilder() {
     }
   }
 
-  const handleAddChapter = async () => {
+  /* ── 챕터 ── */
+  const handleAddChapter = async ({ title, description }) => {
     const chapterNum = chapters.length + 1
-    const title = prompt(`Chapter ${chapterNum} 제목:`)
-    if (!title) return
-
     try {
-      await createChapter({
-        chapter_num: chapterNum,
-        title,
-        description: '',
-      })
+      await createChapter({ chapter_num: chapterNum, title, description })
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
   }
 
   const handleDeleteChapter = async (id) => {
-    if (!confirm('챕터를 삭제하시겠습니까?')) return
     try {
       await deleteChapter(id)
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
   }
 
-  const handleAddScene = async (chapterId) => {
+  /* ── 장면 ── */
+  const handleAddScene = async (chapterId, { text, background, character }) => {
     const chapter = chapters.find(ch => ch.id === chapterId)
     const sceneOrder = (chapter.scenes?.length || 0) + 1
-
-    const text = prompt(`Scene ${sceneOrder} 텍스트:`)
-    if (!text) return
-
     try {
-      await createScene({
-        chapter_id: chapterId,
-        scene_order: sceneOrder,
-        text,
-        character: '',
-        background: '',
-      })
+      await createScene({ chapter_id: chapterId, scene_order: sceneOrder, text, background, character })
       setExpandedChapter(chapterId)
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
+  }
+
+  const handleEditScene = async (sceneId, { text, background, character }) => {
+    try {
+      await updateScene(sceneId, { text, background, character })
+      loadChapters()
+    } catch (e) { setError(e.message) }
   }
 
   const handleDeleteScene = async (sceneId) => {
-    if (!confirm('장면을 삭제하시겠습니까?')) return
     try {
       await deleteScene(sceneId)
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
   }
 
-  const handleEditScene = async (sceneId, currentScene) => {
-    const text = prompt('장면 텍스트:', currentScene.text)
-    if (text === null) return
-
-    try {
-      await updateScene(sceneId, { text })
-      loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
-  const handleAddChoice = async (sceneId) => {
-    const label = prompt('선택지 텍스트:')
-    if (!label) return
-
+  /* ── 선택지 ── */
+  const handleAddChoice = async (sceneId, { label, next_scene_id }) => {
     try {
       const choices = await getChoices(sceneId)
-      await createChoice({
-        scene_id: sceneId,
-        choice_order: choices.length + 1,
-        label,
-        next_scene_id: null,
-      })
+      await createChoice({ scene_id: sceneId, choice_order: choices.length + 1, label, next_scene_id })
       setExpandedScene(sceneId)
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
   }
 
   const handleDeleteChoice = async (choiceId) => {
-    if (!confirm('선택지를 삭제하시겠습니까?')) return
     try {
       await deleteChoice(choiceId)
       loadChapters()
-    } catch (e) {
-      setError(e.message)
-    }
+    } catch (e) { setError(e.message) }
   }
 
   return (
     <div className="space-y-6">
+      {/* ── 모달 렌더링 ── */}
+      {modal?.type === 'addChapter' && (
+        <AddChapterModal
+          nextNum={chapters.length + 1}
+          onSubmit={handleAddChapter}
+          onClose={closeModal}
+        />
+      )}
+      {modal?.type === 'addScene' && (
+        <SceneModal
+          sceneOrder={(chapters.find(c => c.id === modal.chapterId)?.scenes?.length || 0) + 1}
+          onSubmit={(data) => handleAddScene(modal.chapterId, data)}
+          onClose={closeModal}
+        />
+      )}
+      {modal?.type === 'editScene' && (
+        <SceneModal
+          scene={modal.scene}
+          onSubmit={(data) => handleEditScene(modal.scene.id, data)}
+          onClose={closeModal}
+        />
+      )}
+      {modal?.type === 'addChoice' && (
+        <AddChoiceModal
+          allScenes={modal.allScenes}
+          onSubmit={(data) => handleAddChoice(modal.sceneId, data)}
+          onClose={closeModal}
+        />
+      )}
+      {modal?.type === 'confirm' && (
+        <ConfirmModal
+          message={modal.message}
+          onConfirm={modal.onConfirm}
+          onClose={closeModal}
+        />
+      )}
+
+      {/* ── 에러 ── */}
       {error && (
-        <div className="bg-red-900 border border-red-700 text-red-200 p-4 rounded-lg">
-          {error}
+        <div className="bg-red-900 border border-red-700 text-red-200 p-4 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')}><X size={16} /></button>
         </div>
       )}
 
+      {/* ── 챕터 추가 버튼 ── */}
       <button
-        onClick={handleAddChapter}
+        onClick={() => setModal({ type: 'addChapter' })}
         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition"
       >
         <Plus size={20} />
         새 챕터 추가
       </button>
 
+      {/* ── 챕터 목록 ── */}
       <div className="space-y-3">
         {chapters.map((chapter) => (
           <div key={chapter.id} className="bg-gray-800 rounded-lg border border-gray-700">
+            {/* 챕터 헤더 */}
             <div
               onClick={() => setExpandedChapter(expandedChapter === chapter.id ? null : chapter.id)}
               className="p-4 cursor-pointer hover:bg-gray-750 flex items-center justify-between transition"
             >
               <div className="flex items-center gap-3">
-                {expandedChapter === chapter.id ? (
-                  <ChevronUp size={20} className="text-blue-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-gray-400" />
-                )}
+                {expandedChapter === chapter.id
+                  ? <ChevronUp size={20} className="text-blue-400" />
+                  : <ChevronDown size={20} className="text-gray-400" />}
                 <div>
                   <p className="font-semibold text-white">Chapter {chapter.chapter_num}: {chapter.title}</p>
                   <p className="text-sm text-gray-400">{chapter.scenes?.length || 0} 장면</p>
@@ -180,7 +380,11 @@ export default function StoryBuilder() {
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleDeleteChapter(chapter.id)
+                  setModal({
+                    type: 'confirm',
+                    message: `"${chapter.title}" 챕터를 삭제하시겠습니까? 포함된 모든 장면과 선택지도 삭제됩니다.`,
+                    onConfirm: () => handleDeleteChapter(chapter.id),
+                  })
                 }}
                 className="p-2 hover:bg-red-900 rounded transition"
               >
@@ -188,10 +392,11 @@ export default function StoryBuilder() {
               </button>
             </div>
 
+            {/* 챕터 상세 */}
             {expandedChapter === chapter.id && (
               <div className="bg-gray-750 p-4 border-t border-gray-700 space-y-3">
                 <button
-                  onClick={() => handleAddScene(chapter.id)}
+                  onClick={() => setModal({ type: 'addScene', chapterId: chapter.id })}
                   className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition"
                 >
                   <Plus size={16} />
@@ -201,25 +406,24 @@ export default function StoryBuilder() {
                 <div className="space-y-2">
                   {chapter.scenes?.map((scene) => (
                     <div key={scene.id} className="bg-gray-800 p-3 rounded border border-gray-700">
+                      {/* 장면 헤더 */}
                       <div
                         onClick={() => setExpandedScene(expandedScene === scene.id ? null : scene.id)}
                         className="cursor-pointer flex items-center justify-between"
                       >
-                        <div className="flex items-center gap-2">
-                          {expandedScene === scene.id ? (
-                            <ChevronUp size={16} />
-                          ) : (
-                            <ChevronDown size={16} />
-                          )}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {expandedScene === scene.id
+                            ? <ChevronUp size={16} className="shrink-0" />
+                            : <ChevronDown size={16} className="shrink-0" />}
                           <p className="text-sm text-gray-300 truncate">
-                            Scene {scene.scene_order}: {scene.text?.substring(0, 50)}...
+                            Scene {scene.scene_order}: {scene.text?.substring(0, 50)}…
                           </p>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleEditScene(scene.id, scene)
+                              setModal({ type: 'editScene', scene })
                             }}
                             className="p-1 hover:bg-blue-900 rounded transition"
                           >
@@ -228,7 +432,11 @@ export default function StoryBuilder() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDeleteScene(scene.id)
+                              setModal({
+                                type: 'confirm',
+                                message: `Scene ${scene.scene_order}을 삭제하시겠습니까?`,
+                                onConfirm: () => handleDeleteScene(scene.id),
+                              })
                             }}
                             className="p-1 hover:bg-red-900 rounded transition"
                           >
@@ -237,15 +445,28 @@ export default function StoryBuilder() {
                         </div>
                       </div>
 
+                      {/* 장면 상세 */}
                       {expandedScene === scene.id && (
                         <div className="mt-3 pt-3 border-t border-gray-700 space-y-2">
                           <p className="text-xs text-gray-400">텍스트:</p>
-                          <p className="text-sm text-gray-200 bg-gray-900 p-2 rounded max-h-24 overflow-y-auto">
+                          <p className="text-sm text-gray-200 bg-gray-900 p-2 rounded max-h-24 overflow-y-auto whitespace-pre-wrap">
                             {scene.text}
                           </p>
+                          {scene.background && (
+                            <p className="text-xs text-gray-500 truncate">🖼 배경: {scene.background}</p>
+                          )}
+                          {scene.character && (
+                            <p className="text-xs text-gray-500 truncate">🧍 캐릭터: {scene.character}</p>
+                          )}
 
                           <button
-                            onClick={() => handleAddChoice(scene.id)}
+                            onClick={() =>
+                              setModal({
+                                type: 'addChoice',
+                                sceneId: scene.id,
+                                allScenes: chapter.scenes.filter((s) => s.id !== scene.id),
+                              })
+                            }
                             className="text-xs px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded transition"
                           >
                             + 선택지 추가
@@ -255,10 +476,16 @@ export default function StoryBuilder() {
                             <div className="mt-2 space-y-1">
                               {scene.choices.map((choice) => (
                                 <div key={choice.id} className="flex items-center justify-between text-xs bg-gray-900 p-2 rounded">
-                                  <span className="text-gray-300">▸ {choice.label}</span>
+                                  <span className="text-gray-300 truncate">▸ {choice.label}</span>
                                   <button
-                                    onClick={() => handleDeleteChoice(choice.id)}
-                                    className="p-1 hover:bg-red-900 rounded"
+                                    onClick={() =>
+                                      setModal({
+                                        type: 'confirm',
+                                        message: `"${choice.label}" 선택지를 삭제하시겠습니까?`,
+                                        onConfirm: () => handleDeleteChoice(choice.id),
+                                      })
+                                    }
+                                    className="p-1 hover:bg-red-900 rounded shrink-0 ml-2"
                                   >
                                     <Trash2 size={14} className="text-red-500" />
                                   </button>
@@ -277,7 +504,7 @@ export default function StoryBuilder() {
         ))}
       </div>
 
-      {loading && <p className="text-gray-400">로딩 중...</p>}
+      {loading && <p className="text-gray-400 text-sm">로딩 중...</p>}
     </div>
   )
 }
