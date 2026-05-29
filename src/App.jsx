@@ -103,7 +103,16 @@ export default function App() {
     setCurrentChapter(chapterNum); setCurrentScene(0); setPage('story')
   }
   const handleChapterComplete = () => {
-    saveProgress(gameState.nickname, currentChapter); setPage('complete')
+    saveProgress(gameState.nickname, currentChapter)
+    // React state도 즉시 갱신 (localStorage만 저장하면 목록에서 반영 안됨)
+    setGameState(prev => ({
+      ...prev,
+      lastChapter: currentChapter,
+      completedChapters: prev.completedChapters.includes(currentChapter)
+        ? prev.completedChapters
+        : [...prev.completedChapters, currentChapter],
+    }))
+    setPage('complete')
   }
   const handleContinueToNext = () => {
     const next = currentChapter + 1
