@@ -92,6 +92,7 @@ export default function App() {
         <StoryPage
           chapter={currentChapter}
           onComplete={handleChapterComplete}
+          onBack={handleBackToSelect}
           onScene={setCurrentScene}
         />
       )}

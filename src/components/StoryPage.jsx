@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStoryData } from '../lib/api'
 
-export default function StoryPage({ chapter, onComplete, onScene }) {
+export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const [scenes, setScenes] = useState([])
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -89,10 +89,10 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
         <div className="text-center">
           <p className="text-white text-xl mb-4">{error}</p>
           <button
-            onClick={onComplete}
+            onClick={onBack || onComplete}
             className="px-6 py-3 bg-amber-400 hover:bg-amber-300 text-gray-900 font-semibold rounded-xl transition-all"
           >
-            돌아가기
+            챕터 목록으로
           </button>
         </div>
       </div>
