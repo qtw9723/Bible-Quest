@@ -57,7 +57,8 @@ export async function updateChapter(id, data) {
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export async function deleteChapter(id) {
@@ -103,7 +104,8 @@ export async function updateScene(id, data) {
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export async function deleteScene(id) {
@@ -149,7 +151,8 @@ export async function updateChoice(id, data) {
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export async function deleteChoice(id) {
