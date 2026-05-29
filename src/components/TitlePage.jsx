@@ -35,14 +35,35 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
     }, 50)
   }
 
-  // 타이틀 화면 진입 시 BGM 시작
+  // 타이틀 화면 진입 시 BGM 준비 — 첫 클릭 시 재생 (브라우저 자동재생 정책)
   useEffect(() => {
     const audio = new Audio(MAIN_BGM_URL)
     audioRef.current = audio
-    // 곡 끝나면 페이드인으로 재시작
     audio.addEventListener('ended', () => { audio.currentTime = 0; fadeIn(audio) })
-    fadeIn(audio)
-    return () => { clearFade(); audio.pause(); audioRef.current = null }
+
+    const startOnInteraction = () => {
+      if (audioRef.current && audioRef.current.paused) fadeIn(audioRef.current)
+      document.removeEventListener('click', startOnInteraction)
+      document.removeEventListener('keydown', startOnInteraction)
+    }
+
+    // 먼저 자동재생 시도 — 안되면 첫 인터랙션 때 시작
+    audio.play().then(() => {
+      audio.pause()
+      audio.currentTime = 0
+      fadeIn(audio)
+    }).catch(() => {
+      document.addEventListener('click', startOnInteraction)
+      document.addEventListener('keydown', startOnInteraction)
+    })
+
+    return () => {
+      clearFade()
+      audio.pause()
+      audioRef.current = null
+      document.removeEventListener('click', startOnInteraction)
+      document.removeEventListener('keydown', startOnInteraction)
+    }
   }, [])
 
   // 게임 시작 시 BGM 페이드아웃
