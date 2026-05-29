@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Book, Sparkles } from 'lucide-react'
 
 const MAIN_BGM_URL = 'https://elqomxaemqiqalzhczfc.supabase.co/storage/v1/object/public/bible-quest/bgm/main-theme-marimba-meadow.mp3'
@@ -9,6 +9,7 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
   const [nickname, setNickname] = useState('')
   const [hasNickname, setHasNickname] = useState(false)
   const [hasSavedGame, setHasSavedGame] = useState(canContinue)
+  const [started, setStarted] = useState(false)
   const audioRef = useRef(null)
   const fadeRef = useRef(null)
 
@@ -35,21 +36,19 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
     }, 50)
   }
 
-  // muted 자동재생 → 즉시 unmute + 페이드인 (브라우저 자동재생 정책 우회)
+  // BGM 준비 (재생은 handleStart에서)
   useEffect(() => {
     const audio = new Audio(MAIN_BGM_URL)
-    audio.muted = true
     audio.volume = 0
     audioRef.current = audio
     audio.addEventListener('ended', () => { audio.currentTime = 0; fadeIn(audio) })
-
-    audio.play().then(() => {
-      audio.muted = false
-      fadeIn(audio)
-    }).catch(() => {})
-
     return () => { clearFade(); audio.pause(); audioRef.current = null }
   }, [])
+
+  const handleStart = () => {
+    setStarted(true)
+    if (audioRef.current) fadeIn(audioRef.current)
+  }
 
   // 게임 시작 시 BGM 페이드아웃
   const stopBgmAndRun = (fn) => {
@@ -79,7 +78,7 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
   }
 
   return (
-    <div className="size-full relative overflow-hidden">
+    <div className="size-full relative overflow-hidden" onClick={!started ? handleStart : undefined}>
       {/* 배경 그라데이션 */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
         {/* 빛 효과 */}
@@ -211,6 +210,30 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
           )}
         </motion.div>
       </div>
+
+      {/* 탭하여 시작 오버레이 */}
+      <AnimatePresence>
+        {!started && (
+          <motion.div
+            key="tap-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center cursor-pointer select-none"
+            style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)' }}
+          >
+            <motion.div
+              animate={{ opacity: [1, 0.4, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              className="text-center"
+            >
+              <p className="text-white text-2xl sm:text-3xl font-light tracking-widest mb-2">TAP TO START</p>
+              <p className="text-white/50 text-sm tracking-wider">화면을 탭하여 시작하세요</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 입자 효과 */}
       <div className="absolute inset-0 pointer-events-none">
