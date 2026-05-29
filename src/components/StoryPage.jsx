@@ -66,6 +66,9 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     const tick = () => {
       i++
       setDisplayedText(currentScene.text.slice(0, i))
+      // 공백·줄바꿈 제외하고 효과음
+      const ch = currentScene.text[i - 1]
+      if (ch && ch !== ' ' && ch !== '\n') playTypingSfx(i)
       if (i < currentScene.text.length) {
         typingTimerRef.current = setTimeout(tick, TYPING_SPEED)
       } else {
@@ -198,6 +201,30 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
       setImageLoaded(true) // 이미지 로드 실패해도 계속 진행
     }
   }, [currentScene?.background])
+
+  // 타이핑 효과음 — 글자마다 아주 작은 소프트 틱
+  const audioCtxRef = useRef(null)
+  const playTypingSfx = useCallback((index) => {
+    if (index % 2 !== 0) return // 2글자마다 한 번만
+    try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+      const ctx = audioCtxRef.current
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = 300 + Math.random() * 60 // 약간 랜덤하게
+      const t = ctx.currentTime
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.04, t + 0.005)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
+      osc.start(t)
+      osc.stop(t + 0.06)
+    } catch (_) {}
+  }, [])
 
   // 호버 효과음 — 클릭보다 작고 짧은 "틱" 소리
   const playHoverSfx = () => {
