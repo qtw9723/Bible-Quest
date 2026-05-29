@@ -1,11 +1,56 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Book, Sparkles } from 'lucide-react'
+
+const MAIN_BGM_URL = 'https://elqomxaemqiqalzhczfc.supabase.co/storage/v1/object/public/bible-quest/bgm/main-theme-marimba-meadow.mp3'
+const FADE_DURATION = 1500
 
 export default function TitlePage({ onStart, onContinue, canContinue }) {
   const [nickname, setNickname] = useState('')
   const [hasNickname, setHasNickname] = useState(false)
   const [hasSavedGame, setHasSavedGame] = useState(canContinue)
+  const audioRef = useRef(null)
+  const fadeRef = useRef(null)
+
+  const clearFade = () => {
+    if (fadeRef.current) { clearInterval(fadeRef.current); fadeRef.current = null }
+  }
+
+  const fadeIn = (audio) => {
+    clearFade()
+    audio.volume = 0
+    audio.play().catch(() => {})
+    fadeRef.current = setInterval(() => {
+      if (audio.volume < 0.95) audio.volume = Math.min(1, audio.volume + 0.05)
+      else { audio.volume = 1; clearFade() }
+    }, 50)
+  }
+
+  const fadeOut = (audio, onDone) => {
+    clearFade()
+    const step = Math.max(0.02, audio.volume / (FADE_DURATION / 50))
+    fadeRef.current = setInterval(() => {
+      if (audio.volume > step) audio.volume = Math.max(0, audio.volume - step)
+      else { audio.volume = 0; audio.pause(); clearFade(); onDone?.() }
+    }, 50)
+  }
+
+  // 타이틀 화면 진입 시 BGM 시작
+  useEffect(() => {
+    const audio = new Audio(MAIN_BGM_URL)
+    audioRef.current = audio
+    // 곡 끝나면 페이드인으로 재시작
+    audio.addEventListener('ended', () => { audio.currentTime = 0; fadeIn(audio) })
+    fadeIn(audio)
+    return () => { clearFade(); audio.pause(); audioRef.current = null }
+  }, [])
+
+  // 게임 시작 시 BGM 페이드아웃
+  const stopBgmAndRun = (fn) => {
+    const audio = audioRef.current
+    if (audio && !audio.paused) fadeOut(audio, fn)
+    else fn()
+  }
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('biblequest_nickname')
@@ -20,11 +65,11 @@ export default function TitlePage({ onStart, onContinue, canContinue }) {
       localStorage.setItem('biblequest_nickname', nickname.trim())
       setHasNickname(true)
     }
-    onStart(nickname.trim() || '익명')
+    stopBgmAndRun(() => onStart(nickname.trim() || '익명'))
   }
 
   const handleContinue = () => {
-    onContinue()
+    stopBgmAndRun(() => onContinue())
   }
 
   return (
