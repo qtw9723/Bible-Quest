@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStoryData } from '../lib/api'
 
-const FADE_DURATION = 1500 // ms
+const FADE_DURATION = 1500  // BGM 페이드 ms
+const TYPING_SPEED = 40     // 타이핑 속도 ms/글자
 
 export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const [scenes, setScenes] = useState([])
@@ -11,8 +12,13 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [error, setError] = useState(null)
 
-  const audioRef = useRef(null)       // 현재 재생 중인 Audio 객체
-  const fadeTimerRef = useRef(null)   // 페이드 인터벌 타이머
+  // 타이핑 애니메이션
+  const [displayedText, setDisplayedText] = useState('')
+  const [isTypingDone, setIsTypingDone] = useState(false)
+  const typingTimerRef = useRef(null)
+
+  const audioRef = useRef(null)
+  const fadeTimerRef = useRef(null)
 
   // 챕터 데이터 로드 (Supabase에서)
   useEffect(() => {
@@ -39,6 +45,34 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   }, [chapter])
 
   const currentScene = scenes[currentSceneIndex]
+
+  // ── 타이핑 애니메이션 ──
+  const skipTyping = useCallback(() => {
+    if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null }
+    if (currentScene?.text) {
+      setDisplayedText(currentScene.text)
+      setIsTypingDone(true)
+    }
+  }, [currentScene?.text])
+
+  useEffect(() => {
+    if (!currentScene?.text) return
+    setDisplayedText('')
+    setIsTypingDone(false)
+
+    let i = 0
+    const tick = () => {
+      i++
+      setDisplayedText(currentScene.text.slice(0, i))
+      if (i < currentScene.text.length) {
+        typingTimerRef.current = setTimeout(tick, TYPING_SPEED)
+      } else {
+        setIsTypingDone(true)
+      }
+    }
+    typingTimerRef.current = setTimeout(tick, TYPING_SPEED)
+    return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
+  }, [currentScene?.id])
 
   // BGM 페이드 유틸
   const clearFade = () => {
@@ -269,32 +303,56 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
             transition={{ duration: 0.5 }}
             className="w-full max-w-4xl mx-auto"
           >
-            {/* 텍스트 카드 */}
-            <div className="bg-black/70 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 border border-white/10">
-              <p className="text-white text-base sm:text-lg md:text-xl leading-relaxed">
-                {currentScene.text}
+            {/* 텍스트 카드 — 클릭 시 타이핑 스킵 */}
+            <div
+              onClick={!isTypingDone ? skipTyping : undefined}
+              className={`bg-black/70 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 border border-white/10 relative ${!isTypingDone ? 'cursor-pointer' : ''}`}
+            >
+              <p className="text-white text-base sm:text-lg md:text-xl leading-relaxed min-h-[2em]">
+                {displayedText}
+                {/* 타이핑 커서 */}
+                {!isTypingDone && (
+                  <motion.span
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
+                    className="inline-block w-0.5 h-5 bg-amber-300 ml-0.5 align-middle"
+                  />
+                )}
               </p>
+              {/* 스킵 힌트 */}
+              {!isTypingDone && (
+                <p className="absolute bottom-2 right-3 text-xs text-white/30 select-none">클릭하여 건너뛰기</p>
+              )}
             </div>
 
-            {/* 선택지 버튼들 */}
-            <div className="space-y-2 sm:space-y-3">
-              {currentScene.choices && currentScene.choices.map((choice, index) => (
-                <motion.button
-                  key={index}
-                  onClick={() => handleChoice(choice.next_scene_id)}
-                  className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-lg sm:rounded-xl text-white text-left hover:bg-amber-400/20 hover:border-amber-400/50 transition-all duration-300 group"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+            {/* 선택지 버튼들 — 타이핑 완료 후 표시 */}
+            <AnimatePresence>
+              {isTypingDone && (
+                <motion.div
+                  className="space-y-2 sm:space-y-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
                 >
-                  <span className="text-sm sm:text-base md:text-lg group-hover:text-amber-300 transition-colors">
-                    {choice.label}
-                  </span>
-                </motion.button>
-              ))}
-            </div>
+                  {currentScene.choices && currentScene.choices.map((choice, index) => (
+                    <motion.button
+                      key={index}
+                      onClick={() => handleChoice(choice.next_scene_id)}
+                      className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-lg sm:rounded-xl text-white text-left hover:bg-amber-400/20 hover:border-amber-400/50 transition-all duration-300 group"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span className="text-sm sm:text-base md:text-lg group-hover:text-amber-300 transition-colors">
+                        {choice.label}
+                      </span>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* 진행 상황 표시 */}
             <div className="mt-4 sm:mt-6 text-center">
