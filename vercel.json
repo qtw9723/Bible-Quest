@@ -1,4 +1,5 @@
 {
+  "buildCommand": "cp .env .env.production.local && npm run build",
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]
