@@ -100,9 +100,9 @@ function AddChapterModal({ nextNum, onSubmit, onClose }) {
   )
 }
 
-/* ───────── 이미지 드롭다운 ───────── */
-function ImageSelect({ label, value, onChange, images, category }) {
-  const filtered = images.filter(img => img.category === category)
+/* ───────── 미디어 드롭다운 ───────── */
+function MediaSelect({ label, value, onChange, assets, category, preview = 'image' }) {
+  const filtered = assets.filter(a => a.category === category)
   return (
     <div>
       <label className="block text-sm text-gray-400 mb-1">{label}</label>
@@ -112,12 +112,15 @@ function ImageSelect({ label, value, onChange, images, category }) {
         className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="">선택 안 함</option>
-        {filtered.map(img => (
-          <option key={img.id} value={img.public_url}>{img.name}</option>
+        {filtered.map(a => (
+          <option key={a.id} value={a.public_url}>{a.name}</option>
         ))}
       </select>
-      {value && (
+      {value && preview === 'image' && (
         <img src={value} alt="preview" className="mt-2 h-20 w-full object-cover rounded-lg opacity-80" />
+      )}
+      {value && preview === 'audio' && (
+        <audio controls src={value} className="mt-2 w-full h-8" />
       )}
     </div>
   )
@@ -129,16 +132,18 @@ function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
   const [text, setText] = useState(scene?.text || '')
   const [background, setBackground] = useState(scene?.background || '')
   const [character, setCharacter] = useState(scene?.character || '')
-  const [images, setImages] = useState([])
+  const [bgmUrl, setBgmUrl] = useState(scene?.bgm_url || '')
+  const [bgmTransition, setBgmTransition] = useState(scene?.bgm_transition || 'fade')
+  const [assets, setAssets] = useState([])
 
   useEffect(() => {
-    getImageAssets().then(setImages).catch(() => {})
+    getImageAssets().then(setAssets).catch(() => {})
   }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!text.trim()) return
-    onSubmit({ text: text.trim(), background, character })
+    onSubmit({ text: text.trim(), background, character, bgm_url: bgmUrl, bgm_transition: bgmTransition })
     onClose()
   }
 
@@ -156,20 +161,39 @@ function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
             className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
-        <ImageSelect
-          label="🌅 배경 이미지"
-          value={background}
-          onChange={setBackground}
-          images={images}
-          category="backgrounds"
-        />
-        <ImageSelect
-          label="👤 캐릭터 이미지"
-          value={character}
-          onChange={setCharacter}
-          images={images}
-          category="characters"
-        />
+        <MediaSelect label="🌅 배경 이미지" value={background} onChange={setBackground} assets={assets} category="backgrounds" preview="image" />
+        <MediaSelect label="👤 캐릭터 이미지" value={character} onChange={setCharacter} assets={assets} category="characters" preview="image" />
+
+        {/* BGM */}
+        <div className="border-t border-gray-700 pt-4 space-y-3">
+          <MediaSelect label="🎵 BGM" value={bgmUrl} onChange={setBgmUrl} assets={assets} category="bgm" preview="audio" />
+          {bgmUrl && (
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">전환 방식</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'fade', label: '🌊 페이드 인/아웃', desc: '이전 BGM이 서서히 사라지고 새 BGM이 서서히 등장' },
+                  { value: 'cut',  label: '✂️ 컷', desc: '즉시 전환' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setBgmTransition(opt.value)}
+                    title={opt.desc}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm transition ${
+                      bgmTransition === opt.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">취소</button>
           <button type="submit" disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg transition">
@@ -287,19 +311,19 @@ export default function StoryBuilder() {
   }
 
   /* ── 장면 ── */
-  const handleAddScene = async (chapterId, { text, background, character }) => {
+  const handleAddScene = async (chapterId, { text, background, character, bgm_url, bgm_transition }) => {
     const chapter = chapters.find(ch => ch.id === chapterId)
     const sceneOrder = (chapter.scenes?.length || 0) + 1
     try {
-      await createScene({ chapter_id: chapterId, scene_order: sceneOrder, text, background, character })
+      await createScene({ chapter_id: chapterId, scene_order: sceneOrder, text, background, character, bgm_url, bgm_transition })
       setExpandedChapter(chapterId)
       loadChapters()
     } catch (e) { setError(e.message) }
   }
 
-  const handleEditScene = async (sceneId, { text, background, character }) => {
+  const handleEditScene = async (sceneId, { text, background, character, bgm_url, bgm_transition }) => {
     try {
-      await updateScene(sceneId, { text, background, character })
+      await updateScene(sceneId, { text, background, character, bgm_url, bgm_transition })
       loadChapters()
     } catch (e) { setError(e.message) }
   }

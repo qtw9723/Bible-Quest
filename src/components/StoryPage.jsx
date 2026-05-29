@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStoryData } from '../lib/api'
+
+const FADE_DURATION = 1500 // ms
 
 export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const [scenes, setScenes] = useState([])
@@ -8,6 +10,9 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const [isLoading, setIsLoading] = useState(true)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [error, setError] = useState(null)
+
+  const audioRef = useRef(null)       // 현재 재생 중인 Audio 객체
+  const fadeTimerRef = useRef(null)   // 페이드 인터벌 타이머
 
   // 챕터 데이터 로드 (Supabase에서)
   useEffect(() => {
@@ -35,6 +40,100 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
 
   const currentScene = scenes[currentSceneIndex]
 
+  // BGM 페이드 유틸
+  const clearFade = () => {
+    if (fadeTimerRef.current) { clearInterval(fadeTimerRef.current); fadeTimerRef.current = null }
+  }
+
+  const fadeOut = (audio, onDone) => {
+    clearFade()
+    const step = audio.volume / (FADE_DURATION / 50)
+    fadeTimerRef.current = setInterval(() => {
+      if (audio.volume > step) {
+        audio.volume = Math.max(0, audio.volume - step)
+      } else {
+        audio.volume = 0
+        audio.pause()
+        clearFade()
+        onDone?.()
+      }
+    }, 50)
+  }
+
+  const fadeIn = (audio) => {
+    clearFade()
+    audio.volume = 0
+    audio.play().catch(() => {})
+    fadeTimerRef.current = setInterval(() => {
+      if (audio.volume < 1 - 0.05) {
+        audio.volume = Math.min(1, audio.volume + 0.05)
+      } else {
+        audio.volume = 1
+        clearFade()
+      }
+    }, 50)
+  }
+
+  const playBgm = (url, transition) => {
+    const prev = audioRef.current
+
+    // 같은 BGM이면 유지
+    if (prev && prev.src === url && !prev.paused) return
+
+    const startNew = () => {
+      const audio = new Audio(url)
+      audio.loop = true
+      audioRef.current = audio
+      if (transition === 'fade') {
+        fadeIn(audio)
+      } else {
+        audio.volume = 1
+        audio.play().catch(() => {})
+      }
+    }
+
+    if (prev && !prev.paused) {
+      if (transition === 'fade') {
+        fadeOut(prev, startNew)
+      } else {
+        prev.pause()
+        startNew()
+      }
+    } else {
+      startNew()
+    }
+  }
+
+  const stopBgm = (transition) => {
+    const prev = audioRef.current
+    if (!prev || prev.paused) return
+    if (transition === 'fade') {
+      fadeOut(prev, () => { audioRef.current = null })
+    } else {
+      prev.pause()
+      audioRef.current = null
+    }
+  }
+
+  // 장면 변경 시 BGM 처리
+  useEffect(() => {
+    if (!currentScene) return
+    const { bgm_url, bgm_transition } = currentScene
+    if (bgm_url) {
+      playBgm(bgm_url, bgm_transition || 'fade')
+    } else {
+      stopBgm(bgm_transition || 'fade')
+    }
+  }, [currentScene?.bgm_url])
+
+  // 컴포넌트 언마운트 시 BGM 정리
+  useEffect(() => {
+    return () => {
+      clearFade()
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    }
+  }, [])
+
   // 배경 이미지 미리 로드
   useEffect(() => {
     if (!currentScene?.background) {
@@ -55,7 +154,8 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   // 선택지 클릭 핸들러
   const handleChoice = (nextSceneId) => {
     if (nextSceneId === null) {
-      // 챕터 완료
+      // 챕터 완료 - BGM 페이드 아웃
+      stopBgm('fade')
       onComplete()
     } else {
       // 다음 장면으로 이동
