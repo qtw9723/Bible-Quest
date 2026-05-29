@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Home, BookOpen } from 'lucide-react'
 import { getStoryData } from '../lib/api'
 
 const FADE_DURATION = 1500  // BGM 페이드 ms
 const TYPING_SPEED = 40     // 타이핑 속도 ms/글자
 
-export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTitle, onGoSelect }) {
+export default function StoryPage({ chapter, onComplete, onBack, onScene, volume = 0.7, audioRef: externalAudioRef }) {
   const [scenes, setScenes] = useState([])
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [error, setError] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
 
   // 타이핑 애니메이션
   const [displayedText, setDisplayedText] = useState('')
@@ -127,14 +125,18 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     audio.volume = 0
     audio.play().catch(() => {})
     fadeTimerRef.current = setInterval(() => {
-      if (audio.volume < 0.95) {
-        audio.volume = Math.min(1, audio.volume + 0.05)
-      } else {
-        audio.volume = 1
-        clearFade()
-      }
+      const target = volume
+      if (audio.volume < target - 0.04) audio.volume = Math.min(target, audio.volume + 0.05)
+      else { audio.volume = target; clearFade() }
     }, 50)
   }
+
+  // 외부 볼륨 변경 반영
+  useEffect(() => {
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.volume = volume
+    }
+  }, [volume])
 
   const playBgm = (url, transition) => {
     const prev = audioRef.current
@@ -145,18 +147,13 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     const startNew = () => {
       const audio = new Audio(url)
       bgmUrlRef.current = url
-
-      // ★ 곡이 끝나면 페이드인으로 재시작 (loop 대신)
-      audio.addEventListener('ended', () => {
-        audio.currentTime = 0
-        fadeIn(audio)
-      })
-
+      audio.addEventListener('ended', () => { audio.currentTime = 0; fadeIn(audio) })
       audioRef.current = audio
+      if (externalAudioRef) externalAudioRef.current = audio
       if (transition === 'fade') {
         fadeIn(audio)
       } else {
-        audio.volume = 1
+        audio.volume = volume
         audio.play().catch(() => {})
       }
     }
@@ -527,96 +524,6 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
           </motion.div>
         </AnimatePresence>
       </div>
-
-      {/* ── 메뉴 버튼 (우상단) ── */}
-      <div className="absolute top-4 right-4 z-30">
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="w-10 h-10 flex items-center justify-center bg-black/50 backdrop-blur-sm border border-white/20 rounded-xl hover:bg-black/70 transition"
-        >
-          <Menu size={20} className="text-white" />
-        </button>
-      </div>
-
-      {/* ── 사이드바 오버레이 ── */}
-      <AnimatePresence>
-        {menuOpen && (
-          <>
-            {/* 배경 딤 */}
-            <motion.div
-              key="dim"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 z-40 bg-black/50"
-              onClick={() => setMenuOpen(false)}
-            />
-
-            {/* 사이드바 */}
-            <motion.div
-              key="sidebar"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="absolute top-0 right-0 h-full w-64 z-50 bg-gray-900/95 backdrop-blur-md border-l border-white/10 flex flex-col"
-            >
-              {/* 헤더 */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-                <span className="text-white font-semibold">메뉴</span>
-                <button
-                  onClick={() => setMenuOpen(false)}
-                  className="p-1 hover:bg-white/10 rounded-lg transition"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
-              </div>
-
-              {/* 진행 정보 */}
-              <div className="px-5 py-4 border-b border-white/10">
-                <p className="text-xs text-gray-500 mb-1">현재 진행</p>
-                <p className="text-amber-300 font-medium text-sm">챕터 {chapter}</p>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  {currentSceneIndex + 1} / {scenes.length} 장면
-                </p>
-              </div>
-
-              {/* 버튼 목록 */}
-              <div className="flex-1 px-4 py-5 space-y-3">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false)
-                    stopBgm('fade')
-                    onGoTitle?.()
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition group"
-                >
-                  <Home size={18} className="text-amber-300 shrink-0" />
-                  <span className="text-sm font-medium">처음으로</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setMenuOpen(false)
-                    stopBgm('fade')
-                    onGoSelect?.()
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition group"
-                >
-                  <BookOpen size={18} className="text-blue-300 shrink-0" />
-                  <span className="text-sm font-medium">챕터 선택</span>
-                </button>
-              </div>
-
-              {/* 하단 */}
-              <div className="px-5 py-4 border-t border-white/10">
-                <p className="text-xs text-gray-600 text-center">Bible Quest</p>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* 로딩 오버레이 (이미지 로딩 중) */}
       {!imageLoaded && (
