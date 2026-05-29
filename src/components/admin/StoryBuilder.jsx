@@ -4,6 +4,7 @@ import {
   getChapters, createChapter, deleteChapter,
   getScenes, createScene, updateScene, deleteScene,
   getChoices, createChoice, deleteChoice,
+  getImageAssets,
 } from '../../lib/api'
 
 /* ───────── 공용 모달 래퍼 ───────── */
@@ -99,23 +100,51 @@ function AddChapterModal({ nextNum, onSubmit, onClose }) {
   )
 }
 
+/* ───────── 이미지 드롭다운 ───────── */
+function ImageSelect({ label, value, onChange, images, category }) {
+  const filtered = images.filter(img => img.category === category)
+  return (
+    <div>
+      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">선택 안 함</option>
+        {filtered.map(img => (
+          <option key={img.id} value={img.public_url}>{img.name}</option>
+        ))}
+      </select>
+      {value && (
+        <img src={value} alt="preview" className="mt-2 h-20 w-full object-cover rounded-lg opacity-80" />
+      )}
+    </div>
+  )
+}
+
 /* ───────── 장면 추가/수정 모달 ───────── */
 function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
   const isEdit = !!scene
   const [text, setText] = useState(scene?.text || '')
   const [background, setBackground] = useState(scene?.background || '')
   const [character, setCharacter] = useState(scene?.character || '')
+  const [images, setImages] = useState([])
+
+  useEffect(() => {
+    getImageAssets().then(setImages).catch(() => {})
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!text.trim()) return
-    onSubmit({ text: text.trim(), background: background.trim(), character: character.trim() })
+    onSubmit({ text: text.trim(), background, character })
     onClose()
   }
 
   return (
     <Modal title={isEdit ? '장면 수정' : `Scene ${sceneOrder} 추가`} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div>
           <label className="block text-sm text-gray-400 mb-1">장면 텍스트 *</label>
           <textarea
@@ -127,24 +156,20 @@ function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
             className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">배경 이미지 URL (선택)</label>
-          <input
-            value={background}
-            onChange={(e) => setBackground(e.target.value)}
-            placeholder="https://..."
-            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">캐릭터 이미지 URL (선택)</label>
-          <input
-            value={character}
-            onChange={(e) => setCharacter(e.target.value)}
-            placeholder="https://..."
-            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <ImageSelect
+          label="🌅 배경 이미지"
+          value={background}
+          onChange={setBackground}
+          images={images}
+          category="backgrounds"
+        />
+        <ImageSelect
+          label="👤 캐릭터 이미지"
+          value={character}
+          onChange={setCharacter}
+          images={images}
+          category="characters"
+        />
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">취소</button>
           <button type="submit" disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg transition">

@@ -206,6 +206,46 @@ export async function uploadImage(bucket, path, file) {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`
 }
 
+// Image Assets
+export async function getImageAssets(category = null) {
+  let url = `${SUPABASE_URL}/rest/v1/image_assets?order=created_at.desc`
+  if (category) url += `&category=eq.${category}`
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+  })
+  if (!res.ok) throw new Error(`Failed to load images: ${res.status}`)
+  return res.json()
+}
+
+export async function saveImageAsset({ name, category, file_path, public_url }) {
+  return request('POST', 'image_assets', { name, category, file_path, public_url })
+}
+
+export async function updateImageAsset(id, { name }) {
+  const url = `${SUPABASE_URL}/rest/v1/image_assets?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error(`Update failed: ${res.status}`)
+  return null
+}
+
+export async function deleteImageAsset(id) {
+  const url = `${SUPABASE_URL}/rest/v1/image_assets?id=eq.${id}`
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+  })
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+  return null
+}
+
 export async function deleteImage(bucket, path) {
   const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`
   const res = await fetch(url, {

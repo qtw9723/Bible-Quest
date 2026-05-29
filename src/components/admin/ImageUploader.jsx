@@ -1,55 +1,85 @@
-import { useState } from 'react'
-import { Upload, X } from 'lucide-react'
-import { uploadImage } from '../../lib/api'
+import { useState, useEffect } from 'react'
+import { Upload, X, Pencil, Check, Trash2, Copy } from 'lucide-react'
+import { uploadImage, saveImageAsset, getImageAssets, updateImageAsset, deleteImageAsset, deleteImage } from '../../lib/api'
+
+const CATEGORIES = [
+  { value: 'backgrounds', label: '🌅 배경' },
+  { value: 'characters', label: '👤 캐릭터' },
+  { value: 'ui', label: '🎨 UI' },
+]
 
 export default function ImageUploader() {
-  const [category, setCategory] = useState('backgrounds') // backgrounds, characters
+  const [category, setCategory] = useState('backgrounds')
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
 
-  const handleFileSelect = (e) => {
-    const selected = e.target.files?.[0]
-    if (selected) {
-      if (selected.size > 5 * 1024 * 1024) {
-        setError('파일 크기는 5MB 이하여야 합니다.')
-        return
-      }
-      setFile(selected)
-      setError('')
+  // 이미지 리스트
+  const [assets, setAssets] = useState([])
+  const [loadingAssets, setLoadingAssets] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editingName, setEditingName] = useState('')
+  const [filterCategory, setFilterCategory] = useState('all')
+
+  useEffect(() => { loadAssets() }, [])
+
+  const loadAssets = async () => {
+    try {
+      setLoadingAssets(true)
+      const data = await getImageAssets()
+      setAssets(data || [])
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoadingAssets(false)
     }
   }
 
-  const handleUpload = async () => {
-    if (!file) {
-      setError('파일을 선택해주세요.')
+  const handleFileSelect = (e) => {
+    const selected = e.target.files?.[0]
+    if (!selected) return
+    if (selected.size > 5 * 1024 * 1024) {
+      setError('파일 크기는 5MB 이하여야 합니다.')
       return
     }
+    setFile(selected)
+    setError('')
+  }
+
+  const handleUpload = async () => {
+    if (!file) { setError('파일을 선택해주세요.'); return }
 
     try {
       setUploading(true)
       setError('')
       setSuccess('')
 
-      // 한글/공백/특수문자 제거하고 영문+숫자+확장자만 유지
       const ext = file.name.split('.').pop().toLowerCase()
       const safeName = file.name
-        .replace(/\.[^.]+$/, '')           // 확장자 제거
-        .replace(/[^\w\s-]/g, '')          // 특수문자 제거
-        .replace(/\s+/g, '_')             // 공백 → 언더스코어
-        .replace(/[^\x00-\x7F]/g, '')     // 한글 등 비ASCII 제거
-        .replace(/_{2,}/g, '_')           // 연속 언더스코어 정리
-        .replace(/^_|_$/g, '')            // 앞뒤 언더스코어 제거
-        || 'image'                         // 모두 제거되면 기본값
+        .replace(/\.[^.]+$/, '')
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[^\x00-\x7F]/g, '')
+        .replace(/_{2,}/g, '_')
+        .replace(/^_|_$/g, '')
+        || 'image'
       const fileName = `${Date.now()}-${safeName}.${ext}`
-      const path = `${category}/${fileName}`
+      const filePath = `${category}/${fileName}`
 
-      const url = await uploadImage('bible-quest', path, file)
-      setImageUrl(url)
-      setSuccess(`✓ 업로드 완료: ${fileName}`)
+      const publicUrl = await uploadImage('bible-quest', filePath, file)
+
+      // 초기 이름은 파일명에서 자동 생성
+      const displayName = file.name.replace(/\.[^.]+$/, '') || safeName
+
+      await saveImageAsset({ name: displayName, category, file_path: filePath, public_url: publicUrl })
+
+      setSuccess(`✓ 업로드 완료: ${displayName}`)
       setFile(null)
+      // 파일 input 초기화
+      const input = document.getElementById('file-input')
+      if (input) input.value = ''
+      loadAssets()
     } catch (e) {
       setError(`업로드 실패: ${e.message}`)
     } finally {
@@ -57,122 +87,196 @@ export default function ImageUploader() {
     }
   }
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    setSuccess('✓ URL이 클립보드에 복사되었습니다.')
+  const handleStartEdit = (asset) => {
+    setEditingId(asset.id)
+    setEditingName(asset.name)
   }
 
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <h2 className="text-lg font-semibold mb-4 text-white">이미지 업로드</h2>
+  const handleSaveEdit = async (id) => {
+    try {
+      await updateImageAsset(id, { name: editingName })
+      setAssets(prev => prev.map(a => a.id === id ? { ...a, name: editingName } : a))
+      setEditingId(null)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
 
+  const handleDelete = async (asset) => {
+    if (!window.confirm(`"${asset.name}" 이미지를 삭제하시겠습니까?`)) return
+    try {
+      await deleteImage('bible-quest', asset.file_path)
+      await deleteImageAsset(asset.id)
+      setAssets(prev => prev.filter(a => a.id !== asset.id))
+      setSuccess('✓ 삭제 완료')
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const copyUrl = (url) => {
+    navigator.clipboard.writeText(url)
+    setSuccess('✓ URL 복사됨')
+    setTimeout(() => setSuccess(''), 2000)
+  }
+
+  const filteredAssets = filterCategory === 'all'
+    ? assets
+    : assets.filter(a => a.category === filterCategory)
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* ── 업로드 영역 ── */}
+      <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+        <h2 className="text-lg font-semibold mb-4 text-white">이미지 업로드</h2>
         <div className="space-y-4">
-          {/* Category */}
+          {/* 카테고리 */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">카테고리</label>
+            <label className="block text-sm text-gray-400 mb-2">카테고리</label>
             <div className="flex gap-2">
-              {['backgrounds', 'characters', 'ui'].map((cat) => (
+              {CATEGORIES.map(({ value, label }) => (
                 <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    category === cat
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  key={value}
+                  onClick={() => setCategory(value)}
+                  className={`px-4 py-2 rounded-lg text-sm transition ${
+                    category === value ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {cat === 'backgrounds' && '🌅'}
-                  {cat === 'characters' && '👤'}
-                  {cat === 'ui' && '🎨'}
-                  {' '}
-                  {cat}
+                  {label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* File Input */}
+          {/* 파일 선택 */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">파일 선택</label>
-            <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                id="file-input"
-              />
+            <label className="block text-sm text-gray-400 mb-2">파일 선택</label>
+            <div className="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center hover:border-gray-500 transition">
+              <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" id="file-input" />
               <label htmlFor="file-input" className="cursor-pointer block">
                 <Upload className="mx-auto mb-2 text-gray-400" size={32} />
-                <p className="text-gray-400">
-                  {file ? file.name : '클릭하여 파일 선택 또는 드래그'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">최대 5MB</p>
+                <p className="text-gray-400 text-sm">{file ? file.name : '클릭하여 파일 선택 (최대 5MB)'}</p>
               </label>
             </div>
           </div>
 
-          {/* Upload Button */}
           <button
             onClick={handleUpload}
             disabled={!file || uploading}
-            className="w-full px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white font-semibold rounded-lg transition"
+            className="w-full py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white font-semibold rounded-lg transition"
           >
             {uploading ? '업로드 중...' : '업로드'}
           </button>
 
-          {/* Messages */}
           {error && (
-            <div className="bg-red-900 border border-red-700 text-red-200 p-3 rounded-lg flex items-center justify-between">
+            <div className="bg-red-900 border border-red-700 text-red-200 p-3 rounded-lg flex items-center justify-between text-sm">
               <span>{error}</span>
-              <button onClick={() => setError('')}>
-                <X size={18} />
-              </button>
+              <button onClick={() => setError('')}><X size={16} /></button>
             </div>
           )}
-
           {success && (
-            <div className="bg-green-900 border border-green-700 text-green-200 p-3 rounded-lg flex items-center justify-between">
+            <div className="bg-green-900 border border-green-700 text-green-200 p-3 rounded-lg flex items-center justify-between text-sm">
               <span>{success}</span>
-              <button onClick={() => setSuccess('')}>
-                <X size={18} />
-              </button>
-            </div>
-          )}
-
-          {/* Image URL */}
-          {imageUrl && (
-            <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <p className="text-xs text-gray-400 mb-2">생성된 URL:</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={imageUrl}
-                  readOnly
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-sm text-gray-300 font-mono truncate"
-                />
-                <button
-                  onClick={() => copyToClipboard(imageUrl)}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition"
-                >
-                  복사
-                </button>
-              </div>
-              <img src={imageUrl} alt="preview" className="mt-4 max-w-full max-h-64 rounded-lg" />
+              <button onClick={() => setSuccess('')}><X size={16} /></button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-blue-900 border border-blue-700 text-blue-200 p-4 rounded-lg text-sm">
-        <p className="font-semibold mb-2">📋 사용 방법:</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>카테고리를 선택하고 이미지 파일을 업로드합니다.</li>
-          <li>업로드 완료 후 생성된 URL을 복사합니다.</li>
-          <li>스토리 관리에서 scene이나 chapter에 이미지 URL을 붙여넣습니다.</li>
-        </ul>
+      {/* ── 이미지 리스트 ── */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            이미지 목록 <span className="text-gray-400 text-sm font-normal">({filteredAssets.length}개)</span>
+          </h2>
+          {/* 필터 */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilterCategory('all')}
+              className={`px-3 py-1 rounded-lg text-xs transition ${filterCategory === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >전체</button>
+            {CATEGORIES.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setFilterCategory(value)}
+                className={`px-3 py-1 rounded-lg text-xs transition ${filterCategory === value ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loadingAssets ? (
+          <p className="text-gray-400 text-sm p-6">로딩 중...</p>
+        ) : filteredAssets.length === 0 ? (
+          <p className="text-gray-500 text-sm p-6 text-center">업로드된 이미지가 없습니다</p>
+        ) : (
+          <div className="divide-y divide-gray-700">
+            {filteredAssets.map((asset) => (
+              <div key={asset.id} className="flex items-center gap-4 p-4 hover:bg-gray-750 transition">
+                {/* 썸네일 */}
+                <img
+                  src={asset.public_url}
+                  alt={asset.name}
+                  className="w-16 h-16 object-cover rounded-lg bg-gray-700 shrink-0"
+                  onError={(e) => { e.target.src = ''; e.target.className = 'w-16 h-16 rounded-lg bg-gray-700 shrink-0' }}
+                />
+
+                {/* 이름 + 카테고리 */}
+                <div className="flex-1 min-w-0">
+                  {editingId === asset.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(asset.id); if (e.key === 'Escape') setEditingId(null) }}
+                        className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button onClick={() => handleSaveEdit(asset.id)} className="p-1 hover:bg-green-900 rounded">
+                        <Check size={16} className="text-green-400" />
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="p-1 hover:bg-gray-700 rounded">
+                        <X size={16} className="text-gray-400" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-white text-sm font-medium truncate">{asset.name}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {CATEGORIES.find(c => c.value === asset.category)?.label} · {new Date(asset.created_at).toLocaleDateString('ko-KR')}
+                  </p>
+                </div>
+
+                {/* 액션 버튼 */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => copyUrl(asset.public_url)}
+                    className="p-2 hover:bg-gray-700 rounded-lg transition"
+                    title="URL 복사"
+                  >
+                    <Copy size={15} className="text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => handleStartEdit(asset)}
+                    className="p-2 hover:bg-blue-900 rounded-lg transition"
+                    title="이름 수정"
+                  >
+                    <Pencil size={15} className="text-blue-400" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(asset)}
+                    className="p-2 hover:bg-red-900 rounded-lg transition"
+                    title="삭제"
+                  >
+                    <Trash2 size={15} className="text-red-500" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
