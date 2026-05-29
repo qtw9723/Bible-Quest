@@ -74,7 +74,7 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           {chapters.map((chapter, index) => {
-            const isCompleted = completedChapters.includes(chapter.id)
+            const isCompleted = completedChapters.includes(chapter.chapter_num)
             return (
               <motion.button
                 key={chapter.id}
