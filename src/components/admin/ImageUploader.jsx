@@ -33,7 +33,17 @@ export default function ImageUploader() {
       setError('')
       setSuccess('')
 
-      const fileName = `${Date.now()}-${file.name}`
+      // 한글/공백/특수문자 제거하고 영문+숫자+확장자만 유지
+      const ext = file.name.split('.').pop().toLowerCase()
+      const safeName = file.name
+        .replace(/\.[^.]+$/, '')           // 확장자 제거
+        .replace(/[^\w\s-]/g, '')          // 특수문자 제거
+        .replace(/\s+/g, '_')             // 공백 → 언더스코어
+        .replace(/[^\x00-\x7F]/g, '')     // 한글 등 비ASCII 제거
+        .replace(/_{2,}/g, '_')           // 연속 언더스코어 정리
+        .replace(/^_|_$/g, '')            // 앞뒤 언더스코어 제거
+        || 'image'                         // 모두 제거되면 기본값
+      const fileName = `${Date.now()}-${safeName}.${ext}`
       const path = `${category}/${fileName}`
 
       const url = await uploadImage('bible-quest', path, file)
