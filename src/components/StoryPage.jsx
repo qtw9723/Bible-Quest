@@ -199,8 +199,32 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     }
   }, [currentScene?.background])
 
+  // 선택 효과음 (Web Audio API — 외부 파일 불필요)
+  const playChoiceSfx = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      // 두 개의 음을 짧게 겹쳐서 "딩동" 느낌
+      const notes = [660, 880]
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        const t = ctx.currentTime + i * 0.08
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.25, t + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
+        osc.start(t)
+        osc.stop(t + 0.35)
+      })
+    } catch (_) {}
+  }
+
   // 선택지 클릭 핸들러
   const handleChoice = (nextSceneId) => {
+    playChoiceSfx()
     if (nextSceneId === null) {
       // 챕터 완료 - BGM 페이드 아웃
       stopBgm('fade')
@@ -292,8 +316,8 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
         ].filter(Boolean)
         if (chars.length === 0) return null
 
-        // 캐릭터 수에 따라 각 이미지 너비 조정
-        const widthMap = { 1: 'w-48 sm:w-64', 2: 'w-36 sm:w-52', 3: 'w-28 sm:w-40', 4: 'w-24 sm:w-36' }
+        // 캐릭터 수에 따라 각 이미지 너비 조정 (1명일 때 더 넓게)
+        const widthMap = { 1: 'w-64 sm:w-96', 2: 'w-36 sm:w-52', 3: 'w-28 sm:w-40', 4: 'w-24 sm:w-36' }
         const widthClass = widthMap[chars.length] || 'w-24 sm:w-36'
 
         return (
