@@ -268,29 +268,61 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
       {/* 어두운 오버레이 */}
       <div className="absolute inset-0 bg-black/30" />
 
-      {/* 캐릭터 이미지 (있는 경우) */}
-      {currentScene.character && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`char-${currentScene.id}`}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.6 }}
-            className="absolute bottom-0 left-0 sm:h-3/5 sm:w-2/5 h-1/2 w-full sm:max-w-md sm:!w-2/5"
-          >
-            <img
-              src={currentScene.character}
-              alt="Character"
-              className="h-full w-full object-contain object-bottom"
-              onError={(e) => {
-                console.error('Failed to load character image:', currentScene.character)
-                e.target.style.display = 'none'
-              }}
-            />
-          </motion.div>
-        </AnimatePresence>
-      )}
+      {/* 캐릭터 영역 — 화면 중앙, 텍스트 위쪽 */}
+      {(() => {
+        const chars = [
+          currentScene.character,
+          currentScene.character2,
+          currentScene.character3,
+          currentScene.character4,
+        ].filter(Boolean)
+        if (chars.length === 0) return null
+
+        // 캐릭터 수에 따라 각 이미지 너비 조정
+        const widthMap = { 1: 'w-48 sm:w-64', 2: 'w-36 sm:w-52', 3: 'w-28 sm:w-40', 4: 'w-24 sm:w-36' }
+        const widthClass = widthMap[chars.length] || 'w-24 sm:w-36'
+
+        return (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`chars-${currentScene.id}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.6 }}
+              className="absolute inset-x-0 flex items-end justify-center gap-3 sm:gap-6"
+              style={{ top: '8%', bottom: '36%' }}
+            >
+              {chars.map((src, i) => (
+                <div
+                  key={i}
+                  className={`relative ${widthClass} h-full`}
+                  style={{
+                    borderRadius: '1.5rem',
+                    overflow: 'hidden',
+                    // 가장자리 페이드: 위·아래·좌우
+                    WebkitMaskImage:
+                      'linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%),' +
+                      'linear-gradient(to right,   transparent 0%, black  8%, black 92%, transparent 100%)',
+                    WebkitMaskComposite: 'destination-in',
+                    maskImage:
+                      'linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%),' +
+                      'linear-gradient(to right,   transparent 0%, black  8%, black 92%, transparent 100%)',
+                    maskComposite: 'intersect',
+                  }}
+                >
+                  <img
+                    src={src}
+                    alt={`Character ${i + 1}`}
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => { e.target.parentElement.style.display = 'none' }}
+                  />
+                </div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )
+      })()}
 
       {/* 텍스트 및 선택지 영역 */}
       <div className="relative z-10 size-full flex flex-col justify-end p-4 sm:p-6 md:p-10">

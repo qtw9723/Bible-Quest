@@ -90,6 +90,7 @@ function MediaSelect({ label, value, onChange, assets, category, preview = 'imag
       {value && preview === 'audio' && (
         <audio controls src={value} className="mt-2 w-full h-8" />
       )}
+      {/* preview="none" 이면 미리보기 없음 */}
     </div>
   )
 }
@@ -99,19 +100,35 @@ function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
   const isEdit = !!scene
   const [text, setText] = useState(scene?.text || '')
   const [background, setBackground] = useState(scene?.background || '')
-  const [character, setCharacter] = useState(scene?.character || '')
+  const [characters, setCharacters] = useState([
+    scene?.character  || '',
+    scene?.character2 || '',
+    scene?.character3 || '',
+    scene?.character4 || '',
+  ])
   const [bgmUrl, setBgmUrl] = useState(scene?.bgm_url || '')
   const [bgmTransition, setBgmTransition] = useState(scene?.bgm_transition || 'fade')
   const [assets, setAssets] = useState([])
 
   useEffect(() => { getImageAssets().then(setAssets).catch(() => {}) }, [])
 
+  const setChar = (i, val) => setCharacters(prev => prev.map((c, idx) => idx === i ? val : c))
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!text.trim()) return
-    onSubmit({ text: text.trim(), background, character, bgm_url: bgmUrl, bgm_transition: bgmTransition })
+    onSubmit({
+      text: text.trim(), background,
+      character:  characters[0] || null,
+      character2: characters[1] || null,
+      character3: characters[2] || null,
+      character4: characters[3] || null,
+      bgm_url: bgmUrl, bgm_transition: bgmTransition,
+    })
     onClose()
   }
+
+  const charLabels = ['👤 캐릭터 1', '👤 캐릭터 2', '👤 캐릭터 3', '👤 캐릭터 4']
 
   return (
     <Modal title={isEdit ? '장면 수정' : `Scene ${sceneOrder} 추가`} onClose={onClose}>
@@ -123,7 +140,15 @@ function SceneModal({ scene, sceneOrder, onSubmit, onClose }) {
             className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
         <MediaSelect label="🌅 배경 이미지" value={background} onChange={setBackground} assets={assets} category="backgrounds" preview="image" />
-        <MediaSelect label="👤 캐릭터 이미지" value={character} onChange={setCharacter} assets={assets} category="characters" preview="image" />
+
+        {/* 캐릭터 1~4 */}
+        <div className="border-t border-gray-700 pt-3 space-y-3">
+          <p className="text-xs text-gray-400">캐릭터 (최대 4명 — 화면 중앙에 나란히 배치됩니다)</p>
+          {charLabels.map((label, i) => (
+            <MediaSelect key={i} label={label} value={characters[i]} onChange={(v) => setChar(i, v)} assets={assets} category="characters" preview={characters[i] ? 'image' : 'none'} />
+          ))}
+        </div>
+
         <div className="border-t border-gray-700 pt-4 space-y-3">
           <MediaSelect label="🎵 BGM" value={bgmUrl} onChange={setBgmUrl} assets={assets} category="bgm" preview="audio" />
           {bgmUrl && (
@@ -411,22 +436,25 @@ export default function StoryBuilder() {
                           </div>
 
                           {/* 이미지 미리보기 */}
-                          {(scene.background || scene.character) && (
-                            <div className="flex gap-2">
-                              {scene.background && (
-                                <div className="flex-1">
-                                  <p className="text-xs text-gray-400 mb-1">🌅 배경</p>
-                                  <img src={scene.background} alt="배경" className="w-full h-24 object-cover rounded-lg" />
-                                </div>
-                              )}
-                              {scene.character && (
-                                <div className="flex-1">
-                                  <p className="text-xs text-gray-400 mb-1">👤 캐릭터</p>
-                                  <img src={scene.character} alt="캐릭터" className="w-full h-24 object-cover rounded-lg" />
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {(() => {
+                            const chars = [scene.character, scene.character2, scene.character3, scene.character4].filter(Boolean)
+                            return (scene.background || chars.length > 0) && (
+                              <div className="flex gap-2 flex-wrap">
+                                {scene.background && (
+                                  <div className="flex-1 min-w-[80px]">
+                                    <p className="text-xs text-gray-400 mb-1">🌅 배경</p>
+                                    <img src={scene.background} alt="배경" className="w-full h-20 object-cover rounded-lg" />
+                                  </div>
+                                )}
+                                {chars.map((src, i) => (
+                                  <div key={i} className="flex-1 min-w-[60px]">
+                                    <p className="text-xs text-gray-400 mb-1">👤 {i + 1}</p>
+                                    <img src={src} alt={`캐릭터${i+1}`} className="w-full h-20 object-cover rounded-lg" />
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          })()}
 
                           {/* BGM */}
                           {scene.bgm_url && (
