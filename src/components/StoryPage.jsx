@@ -222,27 +222,48 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     }
   }, [currentScene?.background])
 
-  // 타이핑 효과음 — 글자마다 아주 작은 소프트 틱
+  // 타이핑 효과음 — 깃털 펜이 양피지를 긁는 소리 (노이즈 + 밴드패스)
   const audioCtxRef = useRef(null)
   const playTypingSfx = useCallback((index) => {
-    if (index % 2 !== 0) return // 2글자마다 한 번만
+    if (index % 2 !== 0) return // 2글자마다 한 번
     try {
       if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
       }
       const ctx = audioCtxRef.current
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = 'sine'
-      osc.frequency.value = 300 + Math.random() * 60 // 약간 랜덤하게
       const t = ctx.currentTime
+
+      // 짧은 화이트 노이즈 버퍼 생성
+      const bufLen = Math.floor(ctx.sampleRate * 0.055)
+      const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let j = 0; j < bufLen; j++) data[j] = (Math.random() * 2 - 1)
+
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+
+      // 밴드패스: 1800~3500Hz 대역만 통과 → 긁히는 질감
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = 2200 + Math.random() * 400
+      bp.Q.value = 1.2
+
+      // 고역 살짝 강조 → 날카로운 필기 느낌
+      const shelf = ctx.createBiquadFilter()
+      shelf.type = 'highshelf'
+      shelf.frequency.value = 4000
+      shelf.gain.value = 4
+
+      const gain = ctx.createGain()
       gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(0.04, t + 0.005)
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
-      osc.start(t)
-      osc.stop(t + 0.06)
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.004)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.055)
+
+      source.connect(bp)
+      bp.connect(shelf)
+      shelf.connect(gain)
+      gain.connect(ctx.destination)
+      source.start(t)
     } catch (_) {}
   }, [])
 
