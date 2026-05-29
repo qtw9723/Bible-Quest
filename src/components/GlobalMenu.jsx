@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Home, BookOpen, Volume2, VolumeX } from 'lucide-react'
+import { Menu, X, Home, BookOpen, Volume2, VolumeX, SkipForward } from 'lucide-react'
 
-export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, onGoSelect }) {
+export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, onGoSelect, onSkipComplete }) {
   const [open, setOpen] = useState(false)
 
   const isStory = page === 'story'
@@ -79,6 +79,17 @@ export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, on
               {/* 버튼 */}
               <div className="flex-1 px-4 py-5 space-y-3 overflow-y-auto">
                 {menuButtons}
+
+                {/* 테스트: 챕터 완료 스킵 */}
+                {onSkipComplete && (
+                  <button
+                    onClick={() => { setOpen(false); onSkipComplete() }}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-amber-400/10 border border-amber-400/20 rounded-xl text-amber-300 transition"
+                  >
+                    <SkipForward size={18} className="shrink-0" />
+                    <span className="text-sm font-medium">챕터 완료 (테스트)</span>
+                  </button>
+                )}
 
                 {/* 볼륨 */}
                 <div className="pt-2 border-t border-white/10">

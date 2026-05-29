@@ -122,6 +122,7 @@ export default function App() {
         onVolumeChange={handleVolumeChange}
         onGoTitle={() => { setPage('title') }}
         onGoSelect={handleBackToSelect}
+        onSkipComplete={page === 'story' ? handleChapterComplete : undefined}
       />
       {page === 'title' && (
         <TitlePage
