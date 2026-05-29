@@ -93,7 +93,8 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
         setIsTypingDone(true)
       }
     }
-    typingTimerRef.current = setTimeout(tick, TYPING_SPEED)
+    // 1초 딜레이 후 타이핑 시작 (씬 전환 페이드 애니메이션과 겹침 방지)
+    typingTimerRef.current = setTimeout(tick, 1000)
     return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
   }, [currentScene?.id])
 
