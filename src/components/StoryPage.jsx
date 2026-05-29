@@ -49,11 +49,31 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
   const currentScene = scenes[currentSceneIndex]
 
   // ── 타이핑 애니메이션 ──
+  const playSkipSfx = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      // 살짝 내려가는 두 음 — "슥" 느낌
+      [400, 320].forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        const t = ctx.currentTime + i * 0.05
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.1, t + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1)
+        osc.start(t); osc.stop(t + 0.1)
+      })
+    } catch (_) {}
+  }
+
   const skipTyping = useCallback(() => {
     if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null }
     if (currentScene?.text) {
       setDisplayedText(currentScene.text)
       setIsTypingDone(true)
+      playSkipSfx()
     }
   }, [currentScene?.text])
 
