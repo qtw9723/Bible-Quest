@@ -199,6 +199,25 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
     }
   }, [currentScene?.background])
 
+  // 호버 효과음 — 클릭보다 작고 짧은 "틱" 소리
+  const playHoverSfx = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = 520
+      const t = ctx.currentTime
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.08, t + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12)
+      osc.start(t)
+      osc.stop(t + 0.12)
+    } catch (_) {}
+  }
+
   // 선택 효과음 (Web Audio API — 외부 파일 불필요)
   const playChoiceSfx = () => {
     try {
@@ -412,6 +431,7 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, onGoTi
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
+                      onHoverStart={playHoverSfx}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
