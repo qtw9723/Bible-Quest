@@ -94,6 +94,8 @@ export default function App() {
           onComplete={handleChapterComplete}
           onBack={handleBackToSelect}
           onScene={setCurrentScene}
+          onGoTitle={() => setPage('title')}
+          onGoSelect={handleBackToSelect}
         />
       )}
       {page === 'complete' && currentChapter !== null && (
