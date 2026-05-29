@@ -49,7 +49,7 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
       </div>
 
       {/* 콘텐츠 */}
-      <div className="relative z-10 size-full flex flex-col p-10 md:p-16">
+      <div className="relative z-10 size-full flex flex-col p-10 md:p-16 overflow-hidden">
         {/* 헤더 */}
         <motion.div
           className="text-center mb-12"
@@ -67,7 +67,8 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
 
         {/* 챕터 그리드 */}
         <motion.div
-          className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto overflow-x-hidden"
+          className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto overflow-x-hidden pb-2"
+          style={{ scrollbarGutter: 'stable' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
@@ -82,7 +83,7 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.05 }}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.02 }}
               >
                 <div className="bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-2xl p-6 h-full hover:border-amber-400/50 hover:bg-amber-400/10 transition-all duration-300">
                   {/* 완료 배지 */}
