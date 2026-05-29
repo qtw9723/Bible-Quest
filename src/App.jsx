@@ -62,7 +62,7 @@ export default function App() {
   useEffect(() => {
     const audio = mainAudioRef.current
     if (!audio || !bgmStarted) return
-    if (page === 'title' || page === 'select') {
+    if (page === 'title' || page === 'select' || page === 'complete') {
       if (audio.paused) mainFadeIn(audio)
     } else {
       if (!audio.paused) mainFadeOut(audio)
