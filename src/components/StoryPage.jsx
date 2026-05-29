@@ -74,14 +74,17 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
     return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
   }, [currentScene?.id])
 
-  // BGM 페이드 유틸
+  // 현재 재생 중인 BGM의 원본 URL 추적 (src는 브라우저가 절대경로로 바꿔버림)
+  const bgmUrlRef = useRef(null)
+
+  // BGM 페이드 유틸 — 여러 페이드가 겹치지 않도록 인터벌 ID별 관리
   const clearFade = () => {
     if (fadeTimerRef.current) { clearInterval(fadeTimerRef.current); fadeTimerRef.current = null }
   }
 
   const fadeOut = (audio, onDone) => {
     clearFade()
-    const step = audio.volume / (FADE_DURATION / 50)
+    const step = Math.max(0.02, audio.volume / (FADE_DURATION / 50))
     fadeTimerRef.current = setInterval(() => {
       if (audio.volume > step) {
         audio.volume = Math.max(0, audio.volume - step)
@@ -99,7 +102,7 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
     audio.volume = 0
     audio.play().catch(() => {})
     fadeTimerRef.current = setInterval(() => {
-      if (audio.volume < 1 - 0.05) {
+      if (audio.volume < 0.95) {
         audio.volume = Math.min(1, audio.volume + 0.05)
       } else {
         audio.volume = 1
@@ -111,12 +114,19 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
   const playBgm = (url, transition) => {
     const prev = audioRef.current
 
-    // 같은 BGM이면 유지
-    if (prev && prev.src === url && !prev.paused) return
+    // ★ 같은 URL이면 재생 유지 (씬 전환해도 끊지 않음)
+    if (bgmUrlRef.current === url && prev && !prev.paused) return
 
     const startNew = () => {
       const audio = new Audio(url)
-      audio.loop = true
+      bgmUrlRef.current = url
+
+      // ★ 곡이 끝나면 페이드인으로 재시작 (loop 대신)
+      audio.addEventListener('ended', () => {
+        audio.currentTime = 0
+        fadeIn(audio)
+      })
+
       audioRef.current = audio
       if (transition === 'fade') {
         fadeIn(audio)
@@ -142,10 +152,11 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
     const prev = audioRef.current
     if (!prev || prev.paused) return
     if (transition === 'fade') {
-      fadeOut(prev, () => { audioRef.current = null })
+      fadeOut(prev, () => { audioRef.current = null; bgmUrlRef.current = null })
     } else {
       prev.pause()
       audioRef.current = null
+      bgmUrlRef.current = null
     }
   }
 
@@ -165,6 +176,7 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene }) {
     return () => {
       clearFade()
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+      bgmUrlRef.current = null
     }
   }, [])
 
