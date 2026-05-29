@@ -37,15 +37,18 @@ export default function StoryPage({ chapter, onComplete, onScene }) {
 
   // 배경 이미지 미리 로드
   useEffect(() => {
-    if (currentScene?.background) {
-      setImageLoaded(false)
-      const img = new Image()
-      img.src = currentScene.background
-      img.onload = () => setImageLoaded(true)
-      img.onerror = () => {
-        console.error('Failed to load background image:', currentScene.background)
-        setImageLoaded(true) // 이미지 로드 실패해도 계속 진행
-      }
+    if (!currentScene?.background) {
+      // 배경 이미지가 없으면 바로 로드 완료 처리
+      setImageLoaded(true)
+      return
+    }
+    setImageLoaded(false)
+    const img = new Image()
+    img.src = currentScene.background
+    img.onload = () => setImageLoaded(true)
+    img.onerror = () => {
+      console.error('Failed to load background image:', currentScene.background)
+      setImageLoaded(true) // 이미지 로드 실패해도 계속 진행
     }
   }, [currentScene?.background])
 
