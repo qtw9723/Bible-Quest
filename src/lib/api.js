@@ -170,8 +170,10 @@ export async function uploadImage(bucket, path, file) {
   const formData = new FormData()
   formData.append('file', file)
 
+  // 먼저 POST(신규) 시도, 이미 존재하면 PUT(덮어쓰기)으로 재시도
   const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`
-  const res = await fetch(url, {
+
+  let res = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -180,7 +182,27 @@ export async function uploadImage(bucket, path, file) {
     body: formData,
   })
 
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  // 409 Conflict = 동일 경로 파일 이미 존재 → PUT으로 덮어쓰기
+  if (res.status === 409) {
+    res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: formData,
+    })
+  }
+
+  if (!res.ok) {
+    let message = `Upload failed: ${res.status}`
+    try {
+      const body = await res.json()
+      message = body.error || body.message || message
+    } catch (_) { /* 무시 */ }
+    throw new Error(message)
+  }
+
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`
 }
 
