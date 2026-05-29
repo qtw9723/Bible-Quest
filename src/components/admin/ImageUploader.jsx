@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Upload, X, Pencil, Check, Trash2, Copy } from 'lucide-react'
-import { uploadImage, saveImageAsset, getImageAssets, updateImageAsset, deleteImageAsset, deleteImage } from '../../lib/api'
+import { Upload, X, Pencil, Check, Trash2, Copy, RefreshCw } from 'lucide-react'
+import { uploadImage, saveImageAsset, getImageAssets, updateImageAsset, deleteImageAsset, deleteImage, listStorageFiles } from '../../lib/api'
 
 const CATEGORIES = [
   { value: 'backgrounds', label: '🌅 배경' },
@@ -102,6 +102,40 @@ export default function ImageUploader() {
     }
   }
 
+  // Storage에 있는 파일을 image_assets DB에 동기화
+  const handleSync = async () => {
+    try {
+      setLoadingAssets(true)
+      setError('')
+      const existing = await getImageAssets()
+      const existingPaths = new Set(existing.map(a => a.file_path))
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+      let added = 0
+
+      for (const { value: cat } of CATEGORIES) {
+        const files = await listStorageFiles('bible-quest', cat)
+        for (const file of files) {
+          if (!file.name || file.name === '.emptyFolderPlaceholder') continue
+          const filePath = `${cat}/${file.name}`
+          if (existingPaths.has(filePath)) continue
+
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/bible-quest/${filePath}`
+          const displayName = file.name.replace(/^\d+-/, '').replace(/\.[^.]+$/, '') || file.name
+          await saveImageAsset({ name: displayName, category: cat, file_path: filePath, public_url: publicUrl })
+          added++
+        }
+      }
+
+      setSuccess(added > 0 ? `✓ ${added}개 이미지 동기화 완료` : '이미 모두 동기화되어 있어요')
+      loadAssets()
+    } catch (e) {
+      setError(`동기화 실패: ${e.message}`)
+    } finally {
+      setLoadingAssets(false)
+    }
+  }
+
   const handleDelete = async (asset) => {
     if (!window.confirm(`"${asset.name}" 이미지를 삭제하시겠습니까?`)) return
     try {
@@ -185,10 +219,21 @@ export default function ImageUploader() {
 
       {/* ── 이미지 리스트 ── */}
       <div className="bg-gray-800 rounded-xl border border-gray-700">
-        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">
-            이미지 목록 <span className="text-gray-400 text-sm font-normal">({filteredAssets.length}개)</span>
-          </h2>
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-white">
+              이미지 목록 <span className="text-gray-400 text-sm font-normal">({filteredAssets.length}개)</span>
+            </h2>
+            <button
+              onClick={handleSync}
+              disabled={loadingAssets}
+              className="flex items-center gap-1 px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg text-xs transition"
+              title="Storage에서 누락된 이미지 불러오기"
+            >
+              <RefreshCw size={12} className={loadingAssets ? 'animate-spin' : ''} />
+              동기화
+            </button>
+          </div>
           {/* 필터 */}
           <div className="flex gap-2">
             <button

@@ -246,6 +246,22 @@ export async function deleteImageAsset(id) {
   return null
 }
 
+// Storage에서 파일 목록 조회
+export async function listStorageFiles(bucket, folder = '') {
+  const url = `${SUPABASE_URL}/storage/v1/object/list/${bucket}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ prefix: folder, limit: 200, offset: 0 }),
+  })
+  if (!res.ok) throw new Error(`Failed to list files: ${res.status}`)
+  return res.json()
+}
+
 export async function deleteImage(bucket, path) {
   const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`
   const res = await fetch(url, {
