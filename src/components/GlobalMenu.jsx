@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Home, BookOpen, Volume2, VolumeX, SkipForward } from 'lucide-react'
+import { isAdminLoggedIn } from '../lib/adminAuth'
 
 export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, onGoSelect, onSkipComplete }) {
   const [open, setOpen] = useState(false)
@@ -8,6 +9,7 @@ export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, on
   const isStory = page === 'story'
   const isTitle = page === 'title'
   const isAdmin = page === 'admin'
+  const isAdminUser = isAdminLoggedIn()
 
   if (isAdmin) return null
 
@@ -80,8 +82,8 @@ export default function GlobalMenu({ page, volume, onVolumeChange, onGoTitle, on
               <div className="flex-1 px-4 py-5 space-y-3 overflow-y-auto">
                 {menuButtons}
 
-                {/* 테스트: 챕터 완료 스킵 */}
-                {onSkipComplete && (
+                {/* 챕터 완료 스킵 — 어드민 쿠키 있을 때만 표시 */}
+                {onSkipComplete && isAdminUser && (
                   <button
                     onClick={() => { setOpen(false); onSkipComplete() }}
                     className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-amber-400/10 border border-amber-400/20 rounded-xl text-amber-300 transition"
