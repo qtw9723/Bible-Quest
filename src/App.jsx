@@ -22,7 +22,8 @@ export default function App() {
   const [currentScene, setCurrentScene] = useState(0)
   const [bgmStarted, setBgmStarted] = useState(false)
   const [volume, setVolume] = useState(0.7)
-  const storyAudioRef = useRef(null) // StoryPage에서 공유할 ref
+  const volumeRef = useRef(0.7)          // 항상 최신 볼륨 참조용
+  const storyAudioRef = useRef(null)
 
   // ── 메인 BGM (title + select 구간 유지) ──
   const mainAudioRef = useRef(null)
@@ -36,11 +37,11 @@ export default function App() {
     audio.volume = 0
     audio.play().catch(() => {})
     mainFadeRef.current = setInterval(() => {
-      const target = volume
+      const target = volumeRef.current   // ★ ref로 항상 최신값 참조
       if (audio.volume < target - 0.04) audio.volume = Math.min(target, audio.volume + 0.05)
       else { audio.volume = target; clearMainFade() }
     }, 50)
-  }, [volume])
+  }, [])
   const mainFadeOut = useCallback((audio, onDone) => {
     clearMainFade()
     const step = Math.max(0.02, audio.volume / (FADE_DURATION / 50))
@@ -59,9 +60,10 @@ export default function App() {
     return () => { clearMainFade(); audio.pause() }
   }, [])
 
-  // 볼륨 변경 — 메인 BGM + 스토리 BGM 동시 적용
+  // 볼륨 변경 — ref 동기화 + 현재 재생 중인 오디오에 즉시 반영
   const handleVolumeChange = useCallback((v) => {
     setVolume(v)
+    volumeRef.current = v              // ★ ref도 항상 동기화
     if (mainAudioRef.current) mainAudioRef.current.volume = v
     if (storyAudioRef.current) storyAudioRef.current.volume = v
   }, [])

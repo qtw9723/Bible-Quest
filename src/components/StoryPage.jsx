@@ -97,8 +97,11 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
     return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
   }, [currentScene?.id])
 
-  // 현재 재생 중인 BGM의 원본 URL 추적 (src는 브라우저가 절대경로로 바꿔버림)
   const bgmUrlRef = useRef(null)
+  const volumeRef = useRef(volume)  // 항상 최신 볼륨 참조용
+
+  // volume prop 변경 시 ref 동기화
+  useEffect(() => { volumeRef.current = volume }, [volume])
 
   // BGM 페이드 유틸 — 여러 페이드가 겹치지 않도록 인터벌 ID별 관리
   const clearFade = () => {
@@ -125,14 +128,15 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
     audio.volume = 0
     audio.play().catch(() => {})
     fadeTimerRef.current = setInterval(() => {
-      const target = volume
+      const target = volumeRef.current  // ★ ref로 항상 최신값 참조
       if (audio.volume < target - 0.04) audio.volume = Math.min(target, audio.volume + 0.05)
       else { audio.volume = target; clearFade() }
     }, 50)
   }
 
-  // 외부 볼륨 변경 반영
+  // 외부 볼륨 변경 시 현재 재생 중인 오디오에 즉시 반영
   useEffect(() => {
+    volumeRef.current = volume
     if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.volume = volume
     }
