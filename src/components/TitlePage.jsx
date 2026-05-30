@@ -108,24 +108,25 @@ export default function TitlePage({ onStart, onContinue, canContinue, onTap, bgm
                 />
               </div>
 
-              {/* 팀 선택 */}
-              {teams.length > 0 && (
-                <div>
-                  <select
-                    value={teamId} onChange={(e) => setTeamId(e.target.value)}
-                    className="w-full px-6 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-amber-300/50 transition-all appearance-none"
-                    style={{ colorScheme: 'dark' }}
-                  >
-                    <option value="" className="bg-gray-800">팀을 선택하세요 (선택사항)</option>
-                    {teams.map(t => (
-                      <option key={t.id} value={t.id} className="bg-gray-800">{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* 팀 선택 (필수) */}
+              <div>
+                <select
+                  value={teamId} onChange={(e) => setTeamId(e.target.value)}
+                  className="w-full px-6 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-amber-300/50 transition-all appearance-none"
+                  style={{ colorScheme: 'dark' }}
+                >
+                  <option value="" className="bg-gray-800">팀을 선택하세요 *</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id} className="bg-gray-800">{t.name}</option>
+                  ))}
+                </select>
+                {teams.length === 0 && (
+                  <p className="text-xs text-amber-400/70 mt-1 pl-1">팀이 아직 등록되지 않았습니다. 어드민에서 등록해주세요.</p>
+                )}
+              </div>
 
               <motion.button onClick={handleStartGame}
-                disabled={!nickname.trim()}
+                disabled={!nickname.trim() || !teamId}
                 className="w-full py-4 px-6 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-gray-900 font-semibold rounded-xl shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 게임 시작
