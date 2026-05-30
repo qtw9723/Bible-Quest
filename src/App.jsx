@@ -98,8 +98,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
 
-  const handleStartGame = (nickname) => {
-    const newState = { ...gameState, nickname }
+  const handleStartGame = (nickname, teamId, teamName) => {
+    const newState = { ...gameState, nickname, teamId: teamId || null, teamName: teamName || null }
     setGameState(newState)
     setPage('select')
   }
@@ -110,8 +110,8 @@ export default function App() {
     setCurrentChapter(chapterNum); setCurrentScene(0); setPage('story')
   }
   const handleChapterComplete = () => {
-    saveProgress(gameState.nickname, currentChapter)
-    recordChapterComplete(gameState.nickname, currentChapter) // Supabase 기록 (대시보드용)
+    saveProgress(gameState.nickname, currentChapter, gameState.teamId, gameState.teamName)
+    recordChapterComplete(gameState.nickname, currentChapter, gameState.teamId)
     setGameState(prev => ({
       ...prev,
       lastChapter: currentChapter,

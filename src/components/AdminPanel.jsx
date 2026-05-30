@@ -4,10 +4,11 @@ import AdminAuth from './admin/AdminAuth'
 import StoryBuilder from './admin/StoryBuilder'
 import ImageUploader from './admin/ImageUploader'
 import Dashboard from './admin/Dashboard'
+import TeamManager from './admin/TeamManager'
 
 export default function AdminPanel({ onBack }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [tab, setTab] = useState('dashboard') // dashboard, story, images
+  const [tab, setTab] = useState('dashboard')
 
   if (!isAuthenticated) {
     return <AdminAuth onSuccess={() => setIsAuthenticated(true)} />
@@ -34,6 +35,7 @@ export default function AdminPanel({ onBack }) {
         <div className="flex gap-2 bg-gray-800 p-4 border-b border-gray-700 flex-wrap">
           {[
             { key: 'dashboard', label: '📊 대시보드' },
+            { key: 'teams',     label: '👥 팀 관리' },
             { key: 'story',     label: '📖 스토리 관리' },
             { key: 'images',    label: '🖼️ 미디어 관리' },
           ].map(({ key, label }) => (
@@ -49,8 +51,9 @@ export default function AdminPanel({ onBack }) {
         {/* Content */}
         <div className="p-6">
           {tab === 'dashboard' && <Dashboard />}
-          {tab === 'story' && <StoryBuilder />}
-          {tab === 'images' && <ImageUploader />}
+          {tab === 'teams'     && <TeamManager />}
+          {tab === 'story'     && <StoryBuilder />}
+          {tab === 'images'    && <ImageUploader />}
         </div>
       </div>
     </div>

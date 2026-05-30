@@ -278,18 +278,52 @@ export async function deleteImage(bucket, path) {
   return null
 }
 
-// Player Sessions (대시보드용)
-export async function recordChapterComplete(nickname, chapterNum) {
-  const url = `${SUPABASE_URL}/rest/v1/player_sessions`
-  const res = await fetch(url, {
+// Teams
+export async function getTeams() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/teams?order=name.asc`, {
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+  })
+  if (!res.ok) throw new Error(`Failed to load teams: ${res.status}`)
+  return res.json()
+}
+
+export async function createTeam(name) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/teams`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
-      'Prefer': 'resolution=ignore-duplicates', // 중복 무시
+      'Prefer': 'return=representation',
     },
-    body: JSON.stringify({ nickname, chapter_num: chapterNum }),
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) { const t = await res.text(); throw new Error(t || `HTTP ${res.status}`) }
+  const data = await res.json()
+  return data[0]
+}
+
+export async function deleteTeam(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/teams?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+// Player Sessions (대시보드용)
+export async function recordChapterComplete(playerName, chapterNum, teamId) {
+  const body = { player_name: playerName, nickname: playerName, chapter_num: chapterNum }
+  if (teamId) body.team_id = teamId
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/player_sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+      'Prefer': 'resolution=ignore-duplicates',
+    },
+    body: JSON.stringify(body),
   })
   if (!res.ok) console.warn('Failed to record progress:', res.status)
 }
@@ -298,19 +332,44 @@ export async function getDashboardStats() {
   const base = `${SUPABASE_URL}/rest/v1`
   const h = { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
 
-  const [sessions, chapters] = await Promise.all([
-    fetch(`${base}/player_sessions?order=completed_at.desc`, { headers: h }).then(r => r.json()),
+  const [sessions, chapters, teams] = await Promise.all([
+    fetch(`${base}/player_sessions?order=completed_at.desc&limit=500`, { headers: h }).then(r => r.json()),
     fetch(`${base}/chapters?order=chapter_num.asc`, { headers: h }).then(r => r.json()),
+    fetch(`${base}/teams?order=name.asc`, { headers: h }).then(r => r.json()),
   ])
+
+  const teamMap = Object.fromEntries((teams || []).map(t => [t.id, t.name]))
 
   // 플레이어별 집계
   const playerMap = {}
   sessions.forEach(s => {
-    if (!playerMap[s.nickname]) playerMap[s.nickname] = { nickname: s.nickname, completed: [], lastAt: s.completed_at }
-    playerMap[s.nickname].completed.push(s.chapter_num)
-    if (s.completed_at > playerMap[s.nickname].lastAt) playerMap[s.nickname].lastAt = s.completed_at
+    const key = `${s.player_name || s.nickname}__${s.team_id || ''}`
+    if (!playerMap[key]) playerMap[key] = {
+      name: s.player_name || s.nickname,
+      teamId: s.team_id,
+      teamName: teamMap[s.team_id] || '팀 없음',
+      completed: [],
+      lastAt: s.completed_at,
+    }
+    playerMap[key].completed.push(s.chapter_num)
+    if (s.completed_at > playerMap[key].lastAt) playerMap[key].lastAt = s.completed_at
   })
   const players = Object.values(playerMap).sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+
+  // 팀별 집계
+  const teamStats = teams.map(t => {
+    const teamPlayers = players.filter(p => p.teamId === t.id)
+    const teamSessions = sessions.filter(s => s.team_id === t.id)
+    return {
+      id: t.id,
+      name: t.name,
+      playerCount: teamPlayers.length,
+      completions: teamSessions.length,
+      avgCompleted: teamPlayers.length > 0
+        ? (teamSessions.length / teamPlayers.length).toFixed(1)
+        : '0',
+    }
+  })
 
   // 챕터별 완료 수
   const chapterStats = chapters.map(ch => ({
@@ -319,15 +378,13 @@ export async function getDashboardStats() {
     count: sessions.filter(s => s.chapter_num === ch.chapter_num).length,
   }))
 
-  // 최근 활동 (20개)
-  const recent = sessions.slice(0, 20)
-
   return {
     totalPlayers: players.length,
     totalCompletions: sessions.length,
     players,
+    teamStats,
     chapterStats,
-    recent,
+    recent: sessions.slice(0, 20).map(s => ({ ...s, teamName: teamMap[s.team_id] || '' })),
   }
 }
 
