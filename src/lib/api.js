@@ -278,6 +278,59 @@ export async function deleteImage(bucket, path) {
   return null
 }
 
+// Player Sessions (대시보드용)
+export async function recordChapterComplete(nickname, chapterNum) {
+  const url = `${SUPABASE_URL}/rest/v1/player_sessions`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+      'Prefer': 'resolution=ignore-duplicates', // 중복 무시
+    },
+    body: JSON.stringify({ nickname, chapter_num: chapterNum }),
+  })
+  if (!res.ok) console.warn('Failed to record progress:', res.status)
+}
+
+export async function getDashboardStats() {
+  const base = `${SUPABASE_URL}/rest/v1`
+  const h = { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
+
+  const [sessions, chapters] = await Promise.all([
+    fetch(`${base}/player_sessions?order=completed_at.desc`, { headers: h }).then(r => r.json()),
+    fetch(`${base}/chapters?order=chapter_num.asc`, { headers: h }).then(r => r.json()),
+  ])
+
+  // 플레이어별 집계
+  const playerMap = {}
+  sessions.forEach(s => {
+    if (!playerMap[s.nickname]) playerMap[s.nickname] = { nickname: s.nickname, completed: [], lastAt: s.completed_at }
+    playerMap[s.nickname].completed.push(s.chapter_num)
+    if (s.completed_at > playerMap[s.nickname].lastAt) playerMap[s.nickname].lastAt = s.completed_at
+  })
+  const players = Object.values(playerMap).sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+
+  // 챕터별 완료 수
+  const chapterStats = chapters.map(ch => ({
+    chapter_num: ch.chapter_num,
+    title: ch.title,
+    count: sessions.filter(s => s.chapter_num === ch.chapter_num).length,
+  }))
+
+  // 최근 활동 (20개)
+  const recent = sessions.slice(0, 20)
+
+  return {
+    totalPlayers: players.length,
+    totalCompletions: sessions.length,
+    players,
+    chapterStats,
+    recent,
+  }
+}
+
 export async function getStoryData(chapterNum) {
   const chapters = await getChapters()
   const chapter = chapters.find(ch => ch.chapter_num === chapterNum)

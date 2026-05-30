@@ -6,6 +6,7 @@ import ChapterComplete from './components/ChapterComplete'
 import AdminPanel from './components/AdminPanel'
 import GlobalMenu from './components/GlobalMenu'
 import { initializeGame, saveProgress } from './lib/gameState'
+import { recordChapterComplete } from './lib/api'
 
 const MAIN_BGM_URL = 'https://elqomxaemqiqalzhczfc.supabase.co/storage/v1/object/public/bible-quest/bgm/main-theme-marimba-meadow.mp3'
 // 챕터 내 BGM (scenes 테이블에서 직접 관리됨, 참고용)
@@ -108,7 +109,7 @@ export default function App() {
   }
   const handleChapterComplete = () => {
     saveProgress(gameState.nickname, currentChapter)
-    // React state도 즉시 갱신 (localStorage만 저장하면 목록에서 반영 안됨)
+    recordChapterComplete(gameState.nickname, currentChapter) // Supabase 기록 (대시보드용)
     setGameState(prev => ({
       ...prev,
       lastChapter: currentChapter,
