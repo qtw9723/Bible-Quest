@@ -8,6 +8,10 @@ import GlobalMenu from './components/GlobalMenu'
 import { initializeGame, saveProgress } from './lib/gameState'
 
 const MAIN_BGM_URL = 'https://elqomxaemqiqalzhczfc.supabase.co/storage/v1/object/public/bible-quest/bgm/main-theme-marimba-meadow.mp3'
+// 챕터 내 BGM (scenes 테이블에서 직접 관리됨, 참고용)
+// 메인 테마: bgm/1780101158917-3.mp3
+// 부름의 순간: bgm/1780101284801-4.mp3
+// 감정 독백: bgm/1780071045784-Falling_Snowfield.mp3
 const FADE_DURATION = 1500
 
 export default function App() {
