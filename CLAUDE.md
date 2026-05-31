@@ -1,91 +1,116 @@
 # Bible Quest - Development Guide
 
+> Claude Code 작업용 개발 가이드
+
 ## Project Overview
 
-신약 성경의 스토리를 기반으로 한 스토리 리딩 RPG 웹앱.
+신약 성경의 주요 사건을 배경으로 한 스토리 리딩 RPG 웹앱.
 
-- **Frontend**: Vite + React 19 + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Edge Functions)
-- **Deployment**: Vercel
-- **Target**: University students, non-religious background people
+- **Frontend**: Vite + React 19 + Tailwind CSS v4 + Framer Motion
+- **Backend**: Supabase PostgreSQL + Storage (REST API, SDK 미사용)
+- **Deployment**: Vercel (main 브랜치 자동 배포)
+- **Supabase Project**: `elqomxaemqiqalzhczfc`
 
 ## Architecture
 
 ### Frontend Structure
-- Components: 타이틀, 챕터 선택, 스토리, 완료 화면
-- State Management: React hooks + localStorage (초기), 나중에 Supabase로 이동 예정
-- Styling: Tailwind CSS
+- `App.jsx` — 화면 라우팅, 메인 BGM 관리, 전역 볼륨 (volumeRef)
+- `TitlePage.jsx` — 이름 + 팀 선택 필수 로그인
+- `ChapterSelect.jsx` — 챕터 목록, 완료 여부 표시
+- `StoryPage.jsx` — 스토리 렌더링, BGM/SFX, 캐릭터 최대 4명
+- `ChapterComplete.jsx` — 완료 화면
+- `GlobalMenu.jsx` — 전 화면 우상단 고정 메뉴 (볼륨, 이동, 스킵)
+- `AdminPanel.jsx` — 어드민 진입점 (쿠키 인증)
+- `admin/Dashboard.jsx` — 팀별/사용자별 통계
+- `admin/TeamManager.jsx` — 팀 CRUD
 
-### Backend Structure
-- Database: Supabase PostgreSQL
-  - chapters, scenes, choices (스토리 데이터)
-  - players, player_progress (진행도)
-- Edge Functions: 진행도 저장, 데이터 조회 등
+### State Management
+- `gameState.js` — localStorage (nickname, teamId, teamName, completedChapters, lastChapter)
+- `adminAuth.js` — 쿠키 기반 어드민 인증 (7일 슬라이딩)
+- React state (`App.jsx`) — 현재 화면, 볼륨, gameState 동기화
 
-### Data Flow
-1. 사용자 닉네임 입력 (localStorage 저장)
-2. 챕터 선택 후 스토리 페이지로
-3. 선택지 선택 시 다음 장면으로
-4. 챕터 완료 시 progress 저장 (Supabase)
-5. 다음 챕터 or 챕터 목록으로 이동
+### Audio System
+- **메인 BGM**: `App.jsx`의 `mainAudioRef` (타이틀/챕터선택/완료 화면)
+- **스토리 BGM**: `StoryPage.jsx`의 내부 audioRef (`externalAudioRef`로 App에 공유)
+- **bgmUrlRef**: 씬 전환 시 동일 BGM 비교 (브라우저가 src를 절대경로로 변환하므로 ref 필요)
+- **volumeRef**: stale closure 방지 (setInterval/ended 이벤트에서 사용)
+- **SFX**: Web Audio API (타이핑=화이트노이즈+밴드패스, 호버=520Hz, 클릭=660+880Hz, 스킵=400→320Hz)
+
+### Character Display
+- 최대 4명, CSS `mask-image`로 엣지 페이드, `border-radius: 1.5rem`
+- 인원수별 width: `{ 1: 'w-64 sm:w-96', 2: 'w-36 sm:w-52', 3: 'w-28 sm:w-40', 4: 'w-24 sm:w-36' }`
+- 위치: top 8% ~ bottom 36% 중앙 배치
+
+### Admin Auth
+- 쿠키명: `bq_admin_auth`, 값: `'1'`, 7일 만료, SameSite=Strict
+- `isAdminLoggedIn()` — GlobalMenu 스킵 버튼 표시 여부
+- `refreshAdminSession()` — AdminPanel 진입 시 만료일 갱신
+
+## Database Schema
+
+```sql
+chapters       (id, chapter_num, title, description)
+scenes         (id, chapter_id, scene_num, text, speaker, character, character2, character3, character4, background_url, character_url, bgm_url, next_scene_id)
+choices        (id, scene_id, label, next_scene_id, order_num)
+image_assets   (id, name, url, category)  -- category: backgrounds | characters | bgm
+teams          (id, name, created_at)
+player_sessions(id, player_name, team_id, chapter_num, completed_at)
+```
+
+## API Functions (`src/lib/api.js`)
+
+- `getStoryData(chapterNum)` — 챕터 전체 데이터 (scenes + choices)
+- `getTeams()` — 팀 목록
+- `createTeam(name)` / `deleteTeam(id)` — 팀 CRUD
+- `recordChapterComplete(playerName, chapterNum, teamId)` — 완료 기록 (중복 무시)
+- `getDashboardStats()` — 대시보드 통계 집계
 
 ## Development Workflow
 
-### Add New Chapter
-1. `supabase/migrations/` - 데이터 마이그레이션 (필요시)
-2. Supabase에 chapter, scenes, choices 데이터 삽입
-3. `src/components/StoryPage.jsx` - 스토리 데이터 통합
-4. 테스트
-
-### Add New Feature
-1. 요구사항 확인
-2. Component or API 함수 작성
-3. 테스트 및 배포
-
 ### Deploy
-- Vercel: 자동 배포 (main branch push)
-- Environment variables: `.env` 파일로 설정
+```bash
+git add .
+git commit -m "feat: ..."
+git push  # Vercel 자동 배포
+```
 
-## Important Notes
+### Add New Chapter
+1. `supabase/migrations/` 에 SQL 작성
+2. Supabase Dashboard SQL Editor에서 실행
+3. image_assets에 배경/캐릭터/BGM URL 등록
+4. scenes.bgm_url, background_url, character_url 매핑
 
-- localStorage 사용으로 초기 프로토타입 빠르게 개발
-- 이후 Supabase 마이그레이션으로 cross-device 지원
-- 에셋(이미지)는 외부 AI 도구로 제작 후 import
-- GitHub Pages 호환 구조 (GitHub 퍼블리싱 가능)
+### Admin Access
+- URL: `/admin`
+- 비밀번호: 환경변수 또는 직접 입력 (쿠키 저장 후 7일 유지)
 
 ## Environment Variables
 
 ```
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_URL=https://elqomxaemqiqalzhczfc.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJxxxxx
 ```
 
-## Story Data Structure
+## Important Patterns
 
-```json
-{
-  "chapter": 1,
-  "title": "갈릴리의 부름",
-  "scenes": [
-    {
-      "background": "galilee.jpg",
-      "character": "peter.png",
-      "text": "예수께서 갈릴리 해변을...",
-      "choices": [
-        { "label": "따라간다", "next": 2 }
-      ]
-    }
-  ]
-}
+### volumeRef (stale closure 방지)
+```js
+const volumeRef = useRef(0.7)
+// volume state 변경 시 반드시 volumeRef도 동기화
+const handleVolumeChange = (v) => { setVolume(v); volumeRef.current = v }
+// audio ended / setInterval 에서는 volumeRef.current 사용
 ```
 
-## Next Steps
+### bgmUrlRef (동일 BGM 유지)
+```js
+const bgmUrlRef = useRef('')
+// 씬 전환 시 URL 비교 — audio.src는 브라우저가 절대경로로 변환하므로 ref로 원본 보관
+if (bgmUrlRef.current === newUrl) return  // 동일 BGM이면 재시작 안 함
+```
 
-- [ ] Supabase 초기 설정 (프로젝트 생성)
-- [ ] 스토리 콘텐츠 작성 (12개 챕터)
-- [ ] 이미지 에셋 생성 및 통합
-- [ ] Supabase RLS 정책 최적화
-- [ ] 사용자 인증 추가
-- [ ] 멀티엔딩 기능 구현
-- [ ] 성능 최적화 (이미지 lazy loading 등)
-- [ ] GitHub 리포지토리 설정 및 배포
+### externalAudioRef (볼륨 동기화)
+```js
+// App.jsx에서 storyAudioRef를 StoryPage에 전달
+<StoryPage audioRef={storyAudioRef} />
+// handleVolumeChange에서 storyAudioRef.current.volume = v 로 동기화
+```
