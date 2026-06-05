@@ -309,10 +309,15 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
   }, [currentScene?.bgm_url])
 
   // 컴포넌트 언마운트 시 BGM·타이머 정리
+  // 단, 챕터 완료(completedRef=true)로 나간 경우에는 BGM을 끄지 않음
+  // → EndingBridge가 오디오를 이어받아 계속 재생하기 때문
   useEffect(() => {
     return () => {
       clearFade()
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+      if (!completedRef.current && audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
       bgmUrlRef.current = null
     }
   }, [])
@@ -441,16 +446,31 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
   // ────────────────────────────────────────────────────────────────
 
   /**
+   * completedRef: 챕터 완료로 나갔을 때 cleanup에서 BGM을 끄지 않기 위한 플래그.
+   * EndingBridge가 오디오를 이어받아 계속 재생하므로, 여기서 멈추면 안 된다.
+   */
+  const completedRef = useRef(false)
+
+  /**
    * 선택지 클릭 핸들러.
-   * - nextSceneId === null: 챕터 완료 (BGM 페이드아웃 후 onComplete 호출)
-   * - nextSceneId !== null: scenes 배열에서 해당 씬을 찾아 이동, path에 추가
+   * - nextSceneId === null: 챕터 완료
+   *   → BGM을 끊지 않고 onComplete(scene, endingIdx)를 호출.
+   *     EndingBridge가 오디오를 이어받아 자연스럽게 계속 재생.
+   * - nextSceneId !== null: 해당 씬으로 이동, path에 추가
    */
   const handleChoice = (nextSceneId) => {
     playChoiceSfx()
     if (nextSceneId === null) {
-      // 엔딩: BGM 페이드아웃 후 챕터 완료 처리
-      stopBgm('fade')
-      onComplete()
+      // 어떤 엔딩(0·1·2)을 선택했는지 계산
+      // 엔딩 씬 = choices 중 next_scene_id=null이 있는 씬들
+      const endingScenes = scenes.filter(s =>
+        s.choices && s.choices.some(c => c.next_scene_id === null)
+      ).sort((a, b) => a.scene_order - b.scene_order)
+      const endingIdx = Math.max(0, endingScenes.findIndex(s => s.id === currentScene?.id))
+
+      // BGM을 멈추지 않고 EndingBridge로 넘김 (completedRef로 cleanup 방지)
+      completedRef.current = true
+      onComplete(currentScene, endingIdx)
     } else {
       const nextIndex = scenes.findIndex(s => s.id === nextSceneId)
       if (nextIndex !== -1) {

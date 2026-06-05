@@ -19,6 +19,7 @@ import AdminPanel from './components/AdminPanel'
 import GlobalMenu from './components/GlobalMenu'
 import { initializeGame, saveProgress } from './lib/gameState'
 import { recordChapterComplete } from './lib/api'
+import EndingBridge from './components/EndingBridge'
 
 // ── 메인 BGM URL (타이틀·챕터선택·챕터완료 화면에서 재생)
 const MAIN_BGM_URL = 'https://elqomxaemqiqalzhczfc.supabase.co/storage/v1/object/public/bible-quest/bgm/main-theme-marimba-meadow.mp3'
@@ -40,8 +41,12 @@ export default function App() {
   // ── 현재 플레이 중인 챕터 번호 (1~11)
   const [currentChapter, setCurrentChapter] = useState(null)
 
-  // ── 현재 씬 인덱스 (GlobalMenu 등 외부 표시용, 현재 직접 사용 안 함)
+  // ── 현재 씬 인덱스 (GlobalMenu 등 외부 표시용)
   const [currentScene, setCurrentScene] = useState(0)
+
+  // ── 엔딩 브리지용: 챕터 완료 시점의 씬 객체 + 엔딩 인덱스(0·1·2)
+  const [endingScene, setEndingScene] = useState(null)
+  const [endingIndex, setEndingIndex] = useState(0)
 
   // ── BGM 재생 여부 (모바일에서 사용자 인터랙션 후 자동 재생 정책 대응)
   const [bgmStarted, setBgmStarted] = useState(false)
@@ -181,13 +186,14 @@ export default function App() {
   }
 
   /**
-   * 챕터 완료 처리:
-   * 1. localStorage에 진행도 저장
-   * 2. Supabase player_sessions에 완료 기록 (어드민 대시보드용)
-   * 3. React state 즉시 업데이트 (새로고침 없이 챕터 목록에 완료 표시)
-   * 4. 완료 화면으로 전환
+   * 챕터 완료 처리 (StoryPage에서 호출):
+   * - completingScene: 완료 시점의 씬 객체 (배경·성경구절 포함)
+   * - idx: 선택한 엔딩 번호 (0·1·2)
+   *
+   * 흐름: story → ending_bridge → complete
+   * 어드민 스킵(scene 없이 호출)이면 ending_bridge를 건너뛰고 바로 complete로.
    */
-  const handleChapterComplete = () => {
+  const handleChapterComplete = (completingScene, idx = 0) => {
     saveProgress(gameState.nickname, currentChapter, gameState.teamId, gameState.teamName)
     recordChapterComplete(gameState.nickname, currentChapter, gameState.teamId)
     setGameState(prev => ({
@@ -197,6 +203,20 @@ export default function App() {
         ? prev.completedChapters
         : [...prev.completedChapters, currentChapter],
     }))
+
+    if (completingScene) {
+      // 일반 완료: 엔딩 브리지 화면으로 이동
+      setEndingScene(completingScene)
+      setEndingIndex(idx)
+      setPage('ending_bridge')
+    } else {
+      // 어드민 스킵: 브리지 없이 바로 완료 화면
+      setPage('complete')
+    }
+  }
+
+  /** 엔딩 브리지 → 완료 화면으로 이동 */
+  const handleEndingBridgeContinue = () => {
     setPage('complete')
   }
 
@@ -225,7 +245,7 @@ export default function App() {
         onVolumeChange={handleVolumeChange}
         onGoTitle={() => { setPage('title') }}
         onGoSelect={handleBackToSelect}
-        onSkipComplete={page === 'story' ? handleChapterComplete : undefined}
+        onSkipComplete={page === 'story' ? () => handleChapterComplete(null) : undefined}
       />
 
       {/* 타이틀 화면: 로그인(이름+팀 선택) */}
@@ -257,6 +277,18 @@ export default function App() {
           onScene={setCurrentScene}
           volume={volume}
           audioRef={storyAudioRef} // externalAudioRef 패턴: App에서 스토리 BGM 볼륨 동기화
+        />
+      )}
+
+      {/* 엔딩 브리지 화면: 스토리 완료 → 성경 구절 감상 → 챕터 완료 */}
+      {page === 'ending_bridge' && currentChapter !== null && (
+        <EndingBridge
+          chapter={currentChapter}
+          endingScene={endingScene}
+          endingIndex={endingIndex}
+          onContinue={handleEndingBridgeContinue}
+          audioRef={storyAudioRef}
+          volume={volume}
         />
       )}
 
