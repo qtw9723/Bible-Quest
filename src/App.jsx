@@ -18,7 +18,7 @@ import ChapterComplete from './components/ChapterComplete'
 import AdminPanel from './components/AdminPanel'
 import GlobalMenu from './components/GlobalMenu'
 import { initializeGame, saveProgress } from './lib/gameState'
-import { recordChapterComplete } from './lib/api'
+import { recordChapterComplete, getPlayerProgress } from './lib/api'
 import EndingBridge from './components/EndingBridge'
 
 // ── 메인 BGM URL (타이틀·챕터선택·챕터완료 화면에서 재생)
@@ -168,9 +168,43 @@ export default function App() {
 
   // ── 화면 전환 핸들러 ──
 
-  /** 타이틀에서 로그인 완료 → 챕터 선택 화면으로 */
-  const handleStartGame = (nickname, teamId, teamName) => {
+  /**
+   * 타이틀에서 로그인 완료 → DB에서 진행도 동기화 후 챕터 선택 화면으로.
+   *
+   * DB 동기화 흐름:
+   *  1. localStorage의 기존 completedChapters/completedEndings 보존
+   *  2. DB(player_sessions)에서 이 플레이어의 모든 기록 조회
+   *  3. DB + localStorage 합산(합집합) → gameState에 반영 + localStorage 갱신
+   *
+   * 덕분에 다른 기기에서 완료한 챕터/엔딩도 로그인 시 자동 복원된다.
+   * DB 조회 실패 시 localStorage 데이터로만 진행 (네트워크 오류 대응).
+   */
+  const handleStartGame = async (nickname, teamId, teamName) => {
     const newState = { ...gameState, nickname, teamId: teamId || null, teamName: teamName || null }
+
+    try {
+      const { completedChapters: dbChapters, completedEndings: dbEndings } = await getPlayerProgress(nickname)
+
+      // 챕터: localStorage ∪ DB (합집합)
+      const mergedChapters = [...new Set([...(newState.completedChapters ?? []), ...dbChapters])]
+
+      // 엔딩: localStorage ∪ DB (챕터별 엔딩 인덱스 합집합)
+      const mergedEndings = { ...(newState.completedEndings ?? {}) }
+      Object.entries(dbEndings).forEach(([chap, idxList]) => {
+        if (!mergedEndings[chap]) mergedEndings[chap] = []
+        idxList.forEach(i => {
+          if (!mergedEndings[chap].includes(i)) mergedEndings[chap].push(i)
+        })
+      })
+
+      newState.completedChapters = mergedChapters
+      newState.completedEndings  = mergedEndings
+      // 병합된 데이터를 localStorage에도 즉시 반영
+      localStorage.setItem('biblequest_gamestate', JSON.stringify(newState))
+    } catch {
+      // DB 동기화 실패 시 localStorage 데이터로만 진행
+    }
+
     setGameState(newState)
     setPage('select')
   }

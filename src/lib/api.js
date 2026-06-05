@@ -473,13 +473,32 @@ export async function getDashboardStats() {
       name: s.player_name || s.nickname,
       teamId: s.team_id,
       teamName: teamMap[s.team_id] || '팀 없음',
-      completed: [],
+      completed: [],         // 완료한 챕터 번호 목록 (중복 포함 — 여러 엔딩 완료 시 중복)
+      completedSet: new Set(), // 완료한 챕터 번호 집합 (해금 판정용)
+      endings: {},           // { chapterNum: Set([endingIndex, ...]) }
       lastAt: s.completed_at,
     }
     playerMap[key].completed.push(s.chapter_num)
+    playerMap[key].completedSet.add(s.chapter_num)
+    // 엔딩 인덱스 집계
+    if (s.ending_index !== null) {
+      const ek = String(s.chapter_num)
+      if (!playerMap[key].endings[ek]) playerMap[key].endings[ek] = new Set()
+      playerMap[key].endings[ek].add(s.ending_index)
+    }
     if (s.completed_at > playerMap[key].lastAt) playerMap[key].lastAt = s.completed_at
   })
-  const players = Object.values(playerMap).sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+  const players = Object.values(playerMap)
+    .map(p => ({
+      ...p,
+      completed: [...p.completedSet], // 챕터 해금용: 중복 제거된 배열
+      // endings를 { chapterNum: [0,1,2] } 형태로 직렬화
+      endings: Object.fromEntries(
+        Object.entries(p.endings).map(([k, v]) => [k, [...v].sort()])
+      ),
+      totalEndingCount: Object.values(p.endings).reduce((sum, s) => sum + s.size, 0),
+    }))
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt))
 
   // ── 팀별 집계 ──
   const teamStats = teams.map(t => {
@@ -503,13 +522,60 @@ export async function getDashboardStats() {
     count: sessions.filter(s => s.chapter_num === ch.chapter_num).length,
   }))
 
+  // 전체 엔딩 수집 수 (중복 없이 카운트)
+  const totalEndingsCollected = players.reduce((sum, p) => sum + p.totalEndingCount, 0)
+
   return {
     totalPlayers: players.length,
     totalCompletions: sessions.length,
+    totalEndingsCollected,  // 전체 플레이어의 엔딩 수집 합산
     players,
     teamStats,
     chapterStats,
     recent: sessions.slice(0, 20).map(s => ({ ...s, teamName: teamMap[s.team_id] || '' })),
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Player Progress (플레이어 진행도 조회 — 로그인 시 DB→localStorage 동기화)
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * 특정 플레이어의 player_sessions를 DB에서 조회해
+ * completedChapters(챕터 번호 배열)와 completedEndings(챕터별 엔딩 인덱스 맵)를 반환한다.
+ *
+ * 로그인 시 호출 → localStorage와 합산해 gameState에 반영.
+ * 이를 통해 다른 기기에서 완료한 챕터도 동기화된다.
+ *
+ * @param {string} playerName — 플레이어 이름
+ * @returns {{ completedChapters: number[], completedEndings: object }}
+ */
+export async function getPlayerProgress(playerName) {
+  if (!playerName) return { completedChapters: [], completedEndings: {} }
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/player_sessions?player_name=eq.${encodeURIComponent(playerName)}&select=chapter_num,ending_index`,
+      { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY } }
+    )
+    if (!res.ok) return { completedChapters: [], completedEndings: {} }
+    const sessions = await res.json()
+
+    // 챕터 번호 목록 (중복 제거, 오름차순)
+    const completedChapters = [...new Set(sessions.map(s => s.chapter_num))].sort((a,b) => a-b)
+
+    // 챕터별 완료 엔딩 인덱스 맵: { "1": [0, 2], "2": [1] }
+    const completedEndings = {}
+    sessions.forEach(s => {
+      if (s.ending_index === null) return // 구버전 데이터(엔딩 미기록)는 무시
+      const key = String(s.chapter_num)
+      if (!completedEndings[key]) completedEndings[key] = []
+      if (!completedEndings[key].includes(s.ending_index)) {
+        completedEndings[key].push(s.ending_index)
+      }
+    })
+    return { completedChapters, completedEndings }
+  } catch {
+    return { completedChapters: [], completedEndings: {} }
   }
 }
 
