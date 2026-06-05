@@ -412,22 +412,25 @@ export async function deleteTeam(id) {
 
 /**
  * 챕터 완료 기록을 player_sessions 테이블에 저장한다.
- * 동일 (player_name, chapter_num) 조합이 이미 있으면 무시한다 (중복 방지).
+ * 동일 (player_name, chapter_num, ending_index) 조합이 이미 있으면 무시한다 (중복 방지).
+ * ending_index가 다르면 같은 챕터를 여러 번 완료한 것으로 별도 기록된다 (엔딩 수집).
  *
- * @param {string} playerName  — 플레이어 이름
- * @param {number} chapterNum  — 완료한 챕터 번호
- * @param {string|null} teamId — 팀 ID
+ * @param {string} playerName      — 플레이어 이름
+ * @param {number} chapterNum      — 완료한 챕터 번호
+ * @param {string|null} teamId     — 팀 ID
+ * @param {number|null} endingIndex — 완료한 엔딩 인덱스 (0·1·2)
  */
-export async function recordChapterComplete(playerName, chapterNum, teamId) {
+export async function recordChapterComplete(playerName, chapterNum, teamId, endingIndex = null) {
   const body = { player_name: playerName, nickname: playerName, chapter_num: chapterNum }
   if (teamId) body.team_id = teamId
+  if (endingIndex !== null) body.ending_index = endingIndex
   const res = await fetch(`${SUPABASE_URL}/rest/v1/player_sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
-      'Prefer': 'resolution=ignore-duplicates', // 중복 레코드 무시
+      'Prefer': 'resolution=ignore-duplicates', // 동일 엔딩 중복 기록 무시
     },
     body: JSON.stringify(body),
   })

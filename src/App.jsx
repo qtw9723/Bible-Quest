@@ -194,15 +194,27 @@ export default function App() {
    * 어드민 스킵(scene 없이 호출)이면 ending_bridge를 건너뛰고 바로 complete로.
    */
   const handleChapterComplete = (completingScene, idx = 0) => {
-    saveProgress(gameState.nickname, currentChapter, gameState.teamId, gameState.teamName)
-    recordChapterComplete(gameState.nickname, currentChapter, gameState.teamId)
-    setGameState(prev => ({
-      ...prev,
-      lastChapter: currentChapter,
-      completedChapters: prev.completedChapters.includes(currentChapter)
-        ? prev.completedChapters
-        : [...prev.completedChapters, currentChapter],
-    }))
+    // 어드민 스킵(completingScene=null)이면 endingIndex를 null로 처리
+    const endingIdx = completingScene != null ? idx : null
+    saveProgress(gameState.nickname, currentChapter, gameState.teamId, gameState.teamName, endingIdx)
+    recordChapterComplete(gameState.nickname, currentChapter, gameState.teamId, endingIdx)
+    setGameState(prev => {
+      // completedEndings: 챕터별 완료 엔딩 인덱스 목록 갱신
+      const endings = prev.completedEndings ?? {}
+      const key = String(currentChapter)
+      const existing = endings[key] ?? []
+      const newEndings = endingIdx !== null && !existing.includes(endingIdx)
+        ? { ...endings, [key]: [...existing, endingIdx] }
+        : endings
+      return {
+        ...prev,
+        lastChapter: currentChapter,
+        completedChapters: prev.completedChapters.includes(currentChapter)
+          ? prev.completedChapters
+          : [...prev.completedChapters, currentChapter],
+        completedEndings: newEndings,
+      }
+    })
 
     if (completingScene) {
       // 일반 완료: 엔딩 브리지 화면으로 이동
@@ -264,6 +276,7 @@ export default function App() {
         <ChapterSelect
           nickname={gameState.nickname}
           completedChapters={gameState.completedChapters}
+          completedEndings={gameState.completedEndings ?? {}}
           onSelectChapter={handleSelectChapter}
         />
       )}

@@ -16,7 +16,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { getChapters } from '../lib/api'
 
-export default function ChapterSelect({ nickname, completedChapters = [], onSelectChapter }) {
+export default function ChapterSelect({ nickname, completedChapters = [], completedEndings = {}, onSelectChapter }) {
   const [chapters, setChapters] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -143,9 +143,41 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
                       {locked ? '이전 챕터를 완료하면 열립니다.' : (chapter.description || '신약 성경 스토리')}
                     </p>
 
-                    {/* 진행 상태 텍스트 */}
-                    <div className="text-sm text-white/50">
-                      {isCompleted ? '✓ 완료됨' : locked ? '🔒 잠김' : '▶ 시작 가능'}
+                    {/* 진행 상태 텍스트 + 엔딩 수집 현황 */}
+                    <div className="space-y-2">
+                      <div className="text-sm text-white/50">
+                        {isCompleted ? '✓ 완료됨' : locked ? '🔒 잠김' : '▶ 시작 가능'}
+                      </div>
+
+                      {/* 완료된 챕터에만 엔딩 수집 현황 표시
+                          ● = 해당 엔딩 완료, ○ = 미완료
+                          completedEndings 데이터가 있을 때만 표시 (구버전 호환) */}
+                      {isCompleted && completedEndings[String(chapter.chapter_num)]?.length > 0 && (() => {
+                        const done = completedEndings[String(chapter.chapter_num)]
+                        const count = done.length
+                        return (
+                          <div className="flex items-center gap-2">
+                            {/* 3개 점: 각 엔딩(0·1·2) 완료 여부 */}
+                            <div className="flex items-center gap-1">
+                              {[0, 1, 2].map(i => (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full transition-colors ${
+                                    done.includes(i)
+                                      ? 'bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.6)]'
+                                      : 'bg-white/15'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className={`text-xs font-medium ${
+                              count === 3 ? 'text-amber-300' : 'text-white/40'
+                            }`}>
+                              {count}/3 엔딩
+                            </span>
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     {/* 잠긴 챕터 호버 툴팁
