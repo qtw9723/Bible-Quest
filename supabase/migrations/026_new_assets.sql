@@ -1,0 +1,29 @@
+-- =====================================================================
+-- 신규 생성 에셋 등록 이력 (Chapter 026)
+-- 실행: 이미 node _gen_assets.mjs 로 DB에 적용 완료.
+--       이 파일은 이력 추적용. SQL Editor에서 재실행하면 중복 등록됨 (주의).
+-- 에셋: 배경5 + 캐릭터3, 총 39씬 매핑
+-- =====================================================================
+
+-- 생성된 에셋 URL 확인용 (읽기 전용 쿼리)
+-- SELECT name, category, public_url FROM image_assets
+-- WHERE name IN (
+--   'bg_miraculous_catch','bg_temple_pinnacle_mirage','bg_kingdoms_of_world',
+--   'bg_fathers_house_evening','bg_feast_courtyard',
+--   'char_angel','char_lazarus_risen','char_prodigal_son'
+-- );
+
+-- 씬 매핑 현황 (읽기 전용 쿼리)
+-- SELECT s.scene_order, s.background, s.character
+-- FROM scenes s
+-- JOIN chapters c ON c.id = s.chapter_id
+-- WHERE c.chapter_num IN (1,2,8,9)
+--   AND (s.background LIKE '%bg_miracle%'
+--     OR s.background LIKE '%bg_temple%'
+--     OR s.background LIKE '%bg_kingdoms%'
+--     OR s.background LIKE '%bg_father%'
+--     OR s.background LIKE '%bg_feast%'
+--     OR s.character  LIKE '%char_angel%'
+--     OR s.character  LIKE '%char_lazarus%'
+--     OR s.character  LIKE '%char_prodigal%')
+-- ORDER BY c.chapter_num, s.scene_order;
