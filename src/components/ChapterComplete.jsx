@@ -1,28 +1,35 @@
+/**
+ * ChapterComplete.jsx — 챕터 완료 화면
+ *
+ * 역할:
+ *  - 챕터를 완료했을 때 표시되는 축하 화면
+ *  - "다음 챕터" 또는 "챕터 목록으로" 선택 제공
+ *
+ * Props:
+ *  chapter: number        — 방금 완료한 챕터 번호
+ *  onContinueNext()       — 다음 챕터로 이동 콜백 (App.jsx의 handleContinueToNext)
+ *  onBackToSelect()       — 챕터 선택 화면으로 돌아가기 콜백
+ */
 import { motion } from 'framer-motion'
 import { Trophy, Sparkles } from 'lucide-react'
 
 export default function ChapterComplete({ chapter, onContinueNext, onBackToSelect }) {
   return (
     <div className="size-full relative overflow-hidden bg-gradient-to-br from-[#1a365d] via-[#2d3f6f] to-[#5a2d7c]">
-      {/* 배경 이펙트 */}
+
+      {/* ── 배경 글로우 이펙트 ── */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           className="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-yellow-400/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           style={{ transform: 'translate(-50%, -50%)' }}
         />
       </div>
 
-      {/* 메인 콘텐츠 */}
+      {/* ── 메인 콘텐츠 ── */}
       <div className="relative z-10 size-full flex flex-col items-center justify-center p-10">
+
         {/* 트로피 아이콘 */}
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
@@ -43,7 +50,7 @@ export default function ChapterComplete({ chapter, onContinueNext, onBackToSelec
           축하합니다!
         </motion.h1>
 
-        {/* 챕터 정보 */}
+        {/* 완료한 챕터 정보 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -58,7 +65,7 @@ export default function ChapterComplete({ chapter, onContinueNext, onBackToSelec
           </p>
         </motion.div>
 
-        {/* 보상 표시 (나중에 추가) */}
+        {/* 경험치 표시 (현재는 고정값, 추후 실제 보상 시스템 연동 예정) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -70,7 +77,7 @@ export default function ChapterComplete({ chapter, onContinueNext, onBackToSelec
           <Sparkles className="w-8 h-8 text-yellow-300" />
         </motion.div>
 
-        {/* 파티클 이펙트 */}
+        {/* ── 파티클 이펙트 (장식용) ── */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[...Array(15)].map((_, i) => (
             <motion.div
@@ -80,10 +87,7 @@ export default function ChapterComplete({ chapter, onContinueNext, onBackToSelec
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
               }}
-              animate={{
-                y: [0, -100, -200],
-                opacity: [1, 0.5, 0],
-              }}
+              animate={{ y: [0, -100, -200], opacity: [1, 0.5, 0] }}
               transition={{
                 duration: 3 + Math.random() * 2,
                 repeat: Infinity,
@@ -93,13 +97,14 @@ export default function ChapterComplete({ chapter, onContinueNext, onBackToSelec
           ))}
         </div>
 
-        {/* 버튼 그룹 */}
+        {/* ── 버튼 그룹 ── */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col gap-4 w-full max-w-sm"
         >
+          {/* 다음 챕터 — App.jsx에서 11챕터 이후면 챕터 선택으로 이동 처리 */}
           <button
             onClick={onContinueNext}
             className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
