@@ -149,14 +149,15 @@ export default function ChapterSelect({ nickname, completedChapters = [], comple
                         {isCompleted ? '✓ 완료됨' : locked ? '🔒 잠김' : '▶ 시작 가능'}
                       </div>
 
-                      {/* 완료된 챕터에만 엔딩 수집 현황 표시
-                          ● = 해당 엔딩 완료, ○ = 미완료
-                          completedEndings 데이터가 있을 때만 표시 (구버전 호환) */}
-                      {isCompleted && completedEndings[String(chapter.chapter_num)]?.length > 0 && (() => {
-                        const done = completedEndings[String(chapter.chapter_num)]
+                      {/* 완료된 챕터: 항상 엔딩 수집 현황 표시
+                          ● = 해당 엔딩 완료, ○ = 미완료 (0/3도 표시 — 재플레이 유도)
+                          3개 모두 완료 시 amber 강조 */}
+                      {isCompleted && (() => {
+                        const done = completedEndings[String(chapter.chapter_num)] ?? []
                         const count = done.length
+                        const allDone = count === 3
                         return (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mt-0.5">
                             {/* 3개 점: 각 엔딩(0·1·2) 완료 여부 */}
                             <div className="flex items-center gap-1">
                               {[0, 1, 2].map(i => (
@@ -171,7 +172,7 @@ export default function ChapterSelect({ nickname, completedChapters = [], comple
                               ))}
                             </div>
                             <span className={`text-xs font-medium ${
-                              count === 3 ? 'text-amber-300' : 'text-white/40'
+                              allDone ? 'text-amber-300' : 'text-white/35'
                             }`}>
                               {count}/3 엔딩
                             </span>
