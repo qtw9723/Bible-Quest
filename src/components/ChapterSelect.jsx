@@ -15,7 +15,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { getChapters } from '../lib/api'
-import { isAdminLoggedIn } from '../lib/adminAuth'
 
 export default function ChapterSelect({ nickname, completedChapters = [], onSelectChapter }) {
   const [chapters, setChapters] = useState([])
@@ -84,7 +83,6 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           {(() => {
-            const isAdmin = isAdminLoggedIn()              // 어드민 여부 (전체 해금)
             const completedSet = new Set(completedChapters) // O(1) 조회를 위해 Set 변환
             const sorted = [...chapters].sort((a, b) => a.chapter_num - b.chapter_num)
 
@@ -93,12 +91,13 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
               const prev = sorted[index - 1] // 직전 챕터
 
               /**
-               * 해금 조건:
-               *  - 어드민이면 항상 해금
+               * 해금 조건 (어드민 여부와 무관하게 동일하게 적용):
                *  - 첫 번째 챕터(index===0)이면 항상 해금
                *  - 직전 챕터가 완료된 경우 해금
+               * 어드민도 게임 플레이 시에는 일반 유저와 동일한 순서로 진행.
+               * (챕터 스킵은 GlobalMenu의 스킵 버튼으로만 가능)
                */
-              const isUnlocked = isAdmin || index === 0 || (prev && completedSet.has(prev.chapter_num))
+              const isUnlocked = index === 0 || (prev && completedSet.has(prev.chapter_num))
               const locked = !isUnlocked
 
               return (
