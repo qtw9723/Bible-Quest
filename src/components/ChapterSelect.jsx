@@ -147,6 +147,20 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
                     <div className="text-sm text-white/50">
                       {isCompleted ? '✓ 완료됨' : locked ? '🔒 잠김' : '▶ 시작 가능'}
                     </div>
+
+                    {/* 잠긴 챕터 호버 툴팁
+                        이전 챕터 번호를 명시해 어떤 챕터를 먼저 해야 하는지 안내.
+                        카드 하단에 말풍선 형태로 올라옴 (overflow 이슈 없음) */}
+                    {locked && prev && (
+                      <div className="absolute inset-x-0 bottom-0 flex justify-center pb-4 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200 pointer-events-none">
+                        <div className="relative bg-gray-950/95 backdrop-blur-sm border border-amber-400/20 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                          <span className="text-amber-400 font-semibold">챕터 {prev.chapter_num}</span>
+                          <span className="text-white/70">을 완료하면 열립니다</span>
+                          {/* 말풍선 꼬리 */}
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-950 border-b border-r border-amber-400/20 rotate-45" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.button>
               )
