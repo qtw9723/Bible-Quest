@@ -1,20 +1,42 @@
 # Bible Quest 개발 진행 현황
 
-> 마지막 업데이트: 2026-05-30
+> 마지막 업데이트: 2026-06-05
 
 ## 완료된 기능
 
 ### 스토리 시스템
-- 챕터 1~11 시나리오 (신약 10개 사건)
+- **챕터 1~11 전면 확장** — 각 챕터 6씬 → 약 28~30씬 (총 300씬 이상)
+- **이름 없는 관찰자 컨셉** — 플레이어는 성경 사건을 곁에서 지켜보는 이름 없는 한 사람. 선택은 성경의 결과를 바꾸지 않고 나의 위치/마음/반응만 바꾼다.
+- **챕터당 분기 6곳 + 엔딩 3개** — 분기는 갈라졌다가 성경의 고정점(anchor)에서 재합류, 마지막에 3가지 엔딩(믿음 / 따름 / 씨앗 계열)으로 갈림
+- **경로 기준 진행도** — 전체 씬 인덱스가 아니라 실제 방문한 씬 수 기준으로 n/N 표시 (분기를 타도 단조 증가, 엔딩에서 N/N)
 - 타이핑 애니메이션 (스킵 클릭, 첫 씬 즉시 시작)
-- 씬 전환 시 1초 딜레이 후 타이핑 시작 (페이더와 겹침 방지)
-- 분기 선택지 (2개 분기)
 - 캐릭터 최대 4명, 화면 중앙 배치, 라운드(border-radius 1.5rem) + 엣지 페이드(mask-image)
 - 캐릭터 수에 따른 자동 크기 조정 (1:w-64/w-96 ~ 4:w-24/w-36)
 
+### 챕터별 관찰자 시점 / 본문
+| # | 제목 | 본문 | 시점 |
+|---|------|------|------|
+| 1 | 갈릴리의 부름 | 마 4 / 눅 5 | 베드로의 어린 조수 |
+| 2 | 광야의 시험 | 마 4 | 광야의 어린 목동 |
+| 3 | 산상수훈 | 마 5–7 | 군중 속 한 사람 |
+| 4 | 풍랑을 잠재우심 | 막 4 | 배에 탄 어린 일꾼 |
+| 5 | 오병이어의 기적 | 요 6 | 도시락을 가진 소년 |
+| 6 | 물 위를 걸으심 | 마 14 | 배에서 지켜보는 일꾼 |
+| 7 | 선한 사마리아인 | 눅 10 | 여리고 길의 나그네 |
+| 8 | 탕자의 귀환 | 눅 15 | 아버지 집의 종 |
+| 9 | 나사로를 살리심 | 요 11 | 베다니 마을의 벗 |
+| 10 | 최후의 만찬 | 눅 22 | 다락방을 준비한 사람 |
+| 11 | 겟세마네 기도 | 마 26 | 동산의 불침번 경비 |
+
+### 진행/잠금
+- **순차 해금** — 첫 챕터만 열린 상태로 시작, 이전 챕터를 완료해야 다음 챕터가 해금됨 (`ChapterSelect.jsx`)
+- 어드민 쿠키가 있으면 전체 챕터 해금 (테스트용)
+- 잠긴 챕터: 클릭 비활성 + 🔒 배지 + 흐림 처리
+- 챕터 완료 → 다음 챕터 자동 진행 (`handleContinueToNext`, 11챕터에서 안전하게 종료)
+
 ### BGM/효과음
 - 타이틀: Marimba Meadow (TAP TO START 후 재생)
-- 챕터별 3종 BGM 배치 (Morning/Throne/Snowfield)
+- 챕터별 3종 BGM 배치 (잔잔함 → 긴장 → 여운 아크)
 - 동일 BGM 씬 전환 시 끊기지 않음 (bgmUrlRef 비교)
 - 곡 종료 시 페이드인 재시작
 - 챕터 완료/선택 화면: 타이틀 BGM 유지
@@ -46,59 +68,52 @@
 - player_sessions 테이블로 챕터 완료 기록
 - 통계 카드: 총 플레이어 / 총 완료 횟수 / 팀 수 / 평균 완료
 - 탭: 전체현황(챕터별 바차트 + 최근활동) / 팀별 / 사용자별
-- 팀별 완료 횟수, 평균 챕터, 플레이어 수
 
 ### 팀 관리 (어드민)
-- 팀 추가/삭제 CRUD
-- teams 테이블 (id, name)
+- 팀 추가/삭제 CRUD (teams 테이블)
 
 ### 이미지/미디어
-- 11개 배경, 7개 캐릭터 업로드 및 챕터별 씬 매핑
+- 배경/캐릭터/BGM 업로드 및 챕터별 씬 매핑
 - 어드민 미디어 관리 (업로드/싱크/미리보기)
 
 ---
 
 ## DB 구조
 
-| 테이블 | 설명 |
-|--------|------|
-| `chapters` | 챕터 번호, 제목 |
-| `scenes` | 씬 텍스트, 화자, 배경/캐릭터/BGM URL |
-| `choices` | 선택지 텍스트, 다음 씬 |
-| `image_assets` | 이미지/BGM URL, category(backgrounds/characters/bgm) |
-| `teams` | 팀 id, name |
-| `player_sessions` | player_name, team_id, chapter_num, completed_at |
+| 테이블 | 주요 컬럼 |
+|--------|-----------|
+| `chapters` | id, chapter_num, title, description |
+| `scenes` | id, chapter_id, scene_order, text, speaker, character, character2~4, background, bgm_url, bgm_transition |
+| `choices` | id, scene_id, label, next_scene_id, choice_order |
+| `image_assets` | id, name, category(backgrounds/characters/ui), file_path, public_url |
+| `teams` | id, name, created_at |
+| `player_sessions` | id, player_name, nickname, team_id, chapter_num, completed_at |
+
+> 참고: `chapters.id`는 `chapter_num`과 1 차이가 있음 (chapter_num=1 → id=2). 마이그레이션/스크립트에서는 `chapter_num`으로 조회 권장.
 
 ---
 
-## 주요 파일
-
-| 파일 | 역할 |
-|------|------|
-| `src/App.jsx` | 메인 BGM, 볼륨 관리, 화면 라우팅 |
-| `src/components/StoryPage.jsx` | 스토리 렌더링, BGM/SFX, 캐릭터 |
-| `src/components/GlobalMenu.jsx` | 전역 메뉴 (모든 화면) |
-| `src/components/TitlePage.jsx` | 로그인 (이름+팀) |
-| `src/components/ChapterSelect.jsx` | 챕터 목록 |
-| `src/components/AdminPanel.jsx` | 어드민 진입점 |
-| `src/components/admin/Dashboard.jsx` | 대시보드 UI |
-| `src/components/admin/TeamManager.jsx` | 팀 CRUD |
-| `src/lib/api.js` | Supabase REST API 함수 |
-| `src/lib/adminAuth.js` | 어드민 쿠키 인증 |
-| `src/lib/gameState.js` | 로컬스토리지 진행도 |
-
----
-
-## 마이그레이션 이력
+## 마이그레이션 이력 (주요)
 
 | 파일 | 내용 |
 |------|------|
-| `008_multi_characters.sql` | character2~4 컬럼 추가 |
-| `010_chapters_2_to_11.sql` | 챕터 2~11, 60씬, 70선택지 |
-| `011_chapters_2_11_assets.sql` | 배경/캐릭터/BGM 씬 매핑 |
-| `012_update_bgm_urls.sql` | BGM URL 교체 (35씬) |
+| `006_chapter1_scenario.sql` | (구) 1챕터 시나리오 |
+| `010_chapters_2_to_11.sql` | (구) 챕터 2~11 |
 | `013_player_progress.sql` | player_sessions 테이블 |
-| `014_teams.sql` | teams 테이블, player_sessions에 team_id/player_name |
+| `014_teams.sql` | teams 테이블 |
+| `015_chapter1_expansion.sql` | 1챕터 확장 (23씬, 분기 6, 엔딩 3) |
+| `016_chapter2_expansion.sql` | 2챕터 확장 (26씬) |
+| `017_chapter3_expansion.sql` | 3챕터 확장 (30씬) |
+| `018_chapter4_expansion.sql` | 4챕터 확장 (28씬) |
+| `019_chapter5_expansion.sql` | 5챕터 확장 (29씬) |
+| `020_chapter6_expansion.sql` | 6챕터 확장 (30씬) |
+| `021_chapter7_expansion.sql` | 7챕터 확장 (30씬) |
+| `022_chapter8_expansion.sql` | 8챕터 확장 (28씬) |
+| `023_chapter9_expansion.sql` | 9챕터 확장 (30씬) |
+| `024_chapter10_expansion.sql` | 10챕터 확장 (30씬) |
+| `025_chapter11_expansion.sql` | 11챕터 확장 (30씬) |
+
+> 확장 마이그레이션은 `chapter_num` 기준으로 기존 씬/선택지를 비우고 재삽입한다. RLS 비활성 상태이므로 anon 키 REST API로도 동일 적용 가능.
 
 ---
 
@@ -114,11 +129,11 @@
 
 | 버그 | 해결 |
 |------|------|
+| 진행도가 분기에서 튐 | 전체 씬 인덱스 → 경로 기준(방문 씬 / 남은 최장 경로) |
+| 11챕터 완료 후 12챕터 로드 시도 | `handleContinueToNext` 상한 12 → 11 |
 | 캐릭터 이미지 category 오분류 | SQL UPDATE로 category='characters' 수정 |
 | 챕터 완료 목록 미반영 | `chapter.id` → `chapter.chapter_num` 비교 |
 | 완료 후 새로고침 필요 | `setGameState` 즉시 업데이트 추가 |
 | 음소거 후 곡 재시작 시 해제됨 | `volumeRef` 패턴으로 stale closure 해결 |
 | BGM 같은 URL 씬 전환 시 재시작 | `bgmUrlRef`로 URL 비교 |
 | ChapterSelect 호버 스크롤 | scale 1.02 + overflow-hidden |
-| 대시보드 데이터 없음 | 팀 시스템 연동으로 recordChapterComplete 정상 호출 |
-| migration 013 충돌 | player_sessions 테이블로 대체, repair --status reverted |

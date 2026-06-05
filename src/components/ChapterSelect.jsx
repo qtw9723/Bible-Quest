@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { getChapters } from '../lib/api'
+import { isAdminLoggedIn } from '../lib/adminAuth'
 
 export default function ChapterSelect({ nickname, completedChapters = [], onSelectChapter }) {
   const [chapters, setChapters] = useState([])
@@ -73,49 +74,63 @@ export default function ChapterSelect({ nickname, completedChapters = [], onSele
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          {chapters.map((chapter, index) => {
-            const isCompleted = completedChapters.includes(chapter.chapter_num)
-            return (
-              <motion.button
-                key={chapter.id}
-                onClick={() => onSelectChapter(chapter.chapter_num)}
-                className="relative group"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + index * 0.05 }}
-                whileHover={{ scale: 1.02 }}
-              >
-                <div className="bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-2xl p-6 h-full hover:border-amber-400/50 hover:bg-amber-400/10 transition-all duration-300">
-                  {/* 완료 배지 */}
-                  {isCompleted && (
-                    <div className="absolute top-4 right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-lg">✓</span>
+          {(() => {
+            const isAdmin = isAdminLoggedIn()
+            const completedSet = new Set(completedChapters)
+            const sorted = [...chapters].sort((a, b) => a.chapter_num - b.chapter_num)
+            return sorted.map((chapter, index) => {
+              const isCompleted = completedSet.has(chapter.chapter_num)
+              const prev = sorted[index - 1]
+              // 첫 챕터이거나 직전 챕터를 완료했으면 해금 (어드민은 전부 해금)
+              const isUnlocked = isAdmin || index === 0 || (prev && completedSet.has(prev.chapter_num))
+              const locked = !isUnlocked
+              return (
+                <motion.button
+                  key={chapter.id}
+                  onClick={() => { if (!locked) onSelectChapter(chapter.chapter_num) }}
+                  disabled={locked}
+                  className={`relative group text-left ${locked ? 'cursor-not-allowed' : ''}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: locked ? 0.55 : 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                  whileHover={locked ? undefined : { scale: 1.02 }}
+                >
+                  <div className={`backdrop-blur-md border-2 rounded-2xl p-6 h-full transition-all duration-300 ${locked ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/20 hover:border-amber-400/50 hover:bg-amber-400/10'}`}>
+                    {/* 우상단 배지: 완료 ✓ / 잠김 🔒 */}
+                    {isCompleted ? (
+                      <div className="absolute top-4 right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-lg">✓</span>
+                      </div>
+                    ) : locked ? (
+                      <div className="absolute top-4 right-4 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center">
+                        <span className="text-lg">🔒</span>
+                      </div>
+                    ) : null}
+
+                    {/* 챕터 번호 */}
+                    <div className={`text-5xl font-bold mb-2 ${locked ? 'text-white/30' : 'text-amber-300'}`}>
+                      {chapter.chapter_num}
                     </div>
-                  )}
 
-                  {/* 챕터 번호 */}
-                  <div className="text-5xl font-bold text-amber-300 mb-2">
-                    {chapter.chapter_num}
+                    {/* 제목 */}
+                    <h3 className={`text-xl font-semibold mb-2 ${locked ? 'text-white/50' : 'text-white'}`}>
+                      {chapter.title}
+                    </h3>
+
+                    {/* 설명 */}
+                    <p className="text-white/60 text-sm mb-4">
+                      {locked ? '이전 챕터를 완료하면 열립니다.' : (chapter.description || '신약 성경 스토리')}
+                    </p>
+
+                    {/* 상태 표시 */}
+                    <div className="text-sm text-white/50">
+                      {isCompleted ? '✓ 완료됨' : locked ? '🔒 잠김' : '▶ 시작 가능'}
+                    </div>
                   </div>
-
-                  {/* 제목 */}
-                  <h3 className="text-xl font-semibold text-white mb-2">
-                    {chapter.title}
-                  </h3>
-
-                  {/* 설명 */}
-                  <p className="text-white/70 text-sm mb-4">
-                    {chapter.description || '신약 성경 스토리'}
-                  </p>
-
-                  {/* 상태 표시 */}
-                  <div className="text-sm text-white/50">
-                    {isCompleted ? '✓ 완료됨' : '미진행'}
-                  </div>
-                </div>
-              </motion.button>
-            )
-          })}
+                </motion.button>
+              )
+            })
+          })()}
         </motion.div>
       </div>
     </div>

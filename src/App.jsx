@@ -123,7 +123,7 @@ export default function App() {
   }
   const handleContinueToNext = () => {
     const next = currentChapter + 1
-    if (next <= 12) { setCurrentChapter(next); setCurrentScene(0); setPage('story') }
+    if (next <= 11) { setCurrentChapter(next); setCurrentScene(0); setPage('story') }
     else setPage('select')
   }
   const handleBackToSelect = () => setPage('select')
