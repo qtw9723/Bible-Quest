@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStoryData } from '../lib/api'
 
@@ -8,6 +8,7 @@ const TYPING_SPEED = 40     // 타이핑 속도 ms/글자
 export default function StoryPage({ chapter, onComplete, onBack, onScene, volume = 0.7, audioRef: externalAudioRef }) {
   const [scenes, setScenes] = useState([])
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0)
+  const [path, setPath] = useState([])  // 실제 방문한 씬 id 경로 (진행도용)
   const [isLoading, setIsLoading] = useState(true)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [error, setError] = useState(null)
@@ -30,6 +31,7 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
         if (data && data.scenes && data.scenes.length > 0) {
           setScenes(data.scenes)
           setCurrentSceneIndex(0)
+          setPath([data.scenes[0].id])
         } else {
           setError('스토리 데이터를 찾을 수 없습니다.')
         }
@@ -45,6 +47,31 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
   }, [chapter])
 
   const currentScene = scenes[currentSceneIndex]
+
+  // ── 진행도: 내 경로 기준 ──
+  // 분자=방문한 씬 수(path.length), 분모=path.length + 현재 씬에서 엔딩까지 남은 최장 경로
+  const sceneById = useMemo(() => Object.fromEntries(scenes.map(s => [s.id, s])), [scenes])
+  const remainingFrom = useCallback((startId) => {
+    const memo = {}
+    const inStack = new Set()
+    const dfs = (id) => {
+      const scene = sceneById[id]
+      if (!scene || !scene.choices || scene.choices.length === 0) return 0
+      if (memo[id] != null) return memo[id]
+      if (inStack.has(id)) return 0  // 순환 방어
+      inStack.add(id)
+      let best = 0
+      for (const c of scene.choices) {
+        if (c.next_scene_id != null && sceneById[c.next_scene_id]) {
+          best = Math.max(best, 1 + dfs(c.next_scene_id))
+        }
+      }
+      inStack.delete(id)
+      memo[id] = best
+      return best
+    }
+    return dfs(startId)
+  }, [sceneById])
 
   // ── 타이핑 애니메이션 ──
   const playSkipSfx = () => {
@@ -322,6 +349,7 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
       const nextIndex = scenes.findIndex(s => s.id === nextSceneId)
       if (nextIndex !== -1) {
         setCurrentSceneIndex(nextIndex)
+        setPath(p => [...p, nextSceneId])
         if (onScene) {
           onScene(nextIndex)
         }
@@ -521,7 +549,11 @@ export default function StoryPage({ chapter, onComplete, onBack, onScene, volume
                 </span>
                 <span className="text-white/50">•</span>
                 <span className="text-white/70">
-                  {currentSceneIndex + 1} / {scenes.length}
+                  {(() => {
+                    const done = path.length || (currentSceneIndex + 1)
+                    const total = currentScene ? done + remainingFrom(currentScene.id) : done
+                    return `${done} / ${total}`
+                  })()}
                 </span>
               </div>
             </div>
