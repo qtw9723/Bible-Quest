@@ -20,8 +20,12 @@
 ALTER TABLE public.player_sessions
   ADD COLUMN IF NOT EXISTS ending_index INTEGER;
 
--- 2) 기존 (player_name, chapter_num) 유니크 제약 제거
---    이름은 Supabase 자동 생성 규칙: {table}_{col1}_{col2}_key
+-- 2) 기존 유니크 제약 제거
+--    013 에서 UNIQUE(nickname, chapter_num) 으로 만들어졌으므로 자동 생성 이름은
+--    player_sessions_nickname_chapter_num_key 이다 (nickname 기준!).
+--    (player_name 기준 이름은 존재하지 않으므로 방어적으로 함께 시도한다.)
+ALTER TABLE public.player_sessions
+  DROP CONSTRAINT IF EXISTS player_sessions_nickname_chapter_num_key;
 ALTER TABLE public.player_sessions
   DROP CONSTRAINT IF EXISTS player_sessions_player_name_chapter_num_key;
 

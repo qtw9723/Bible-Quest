@@ -74,7 +74,7 @@ scenes         (id, chapter_id, scene_order, text, speaker, character, character
 choices        (id, scene_id, label, next_scene_id, choice_order)   -- next_scene_id=NULL 이면 챕터 완료
 image_assets   (id, name, category, file_path, public_url, created_at)  -- category: backgrounds | characters | ui
 teams          (id, name, created_at)
-player_sessions(id, player_name, nickname, team_id, chapter_num, completed_at)
+player_sessions(id, player_name, nickname, team_id, chapter_num, ending_index, completed_at)  -- UNIQUE(player_name, chapter_num, ending_index) NULLS NOT DISTINCT — 엔딩(0·1·2)별 별도 기록
 ```
 
 ## API Functions (`src/lib/api.js`)
