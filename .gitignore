@@ -30,3 +30,7 @@ dist-ssr
 # Supabase
 supabase/.env
 supabase/.env.local
+
+# Secrets
+.env
+!.env.example
